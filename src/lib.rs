@@ -5,6 +5,7 @@
 #[phase(link, plugin)]
 extern crate log;
 
+use std::cmp;
 use std::io::{MemWriter, IoResult, IoError, OtherIoError};
 use std::rand::{Rng, OsRng};
 use std::slice::bytes::copy_memory;
@@ -351,7 +352,7 @@ impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
             }
 
             let selflen = self.buf.len();
-            let necessary = if remaining > selflen { selflen } else { remaining };
+            let necessary = cmp::min(remaining, selflen);
             copy_memory(buf.mut_slice(pos, pos + necessary), self.buf.slice_to(necessary));
             pos += necessary;
 
