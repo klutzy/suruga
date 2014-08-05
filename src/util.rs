@@ -1,3 +1,5 @@
+use std::mem;
+
 /// constant-time compare function.
 /// `a` and `b` may be SECRET, but the length is known.
 /// precondition: `a.len() == b.len()`
@@ -15,18 +17,10 @@ pub fn crypto_compare(a: &[u8], b: &[u8]) -> bool {
     return diff == 0;
 }
 
-pub fn u64_be_vec(len: u64) -> Vec<u8> {
-    let mut v = Vec::new();
-    for i in range(0u, 8).rev() {
-        v.push((len >> (8 * i)) as u8);
-    }
-    v
+pub fn u64_be_array(x: u64) -> [u8, ..8] {
+    unsafe { mem::transmute(x.to_be()) }
 }
 
-pub fn u64_le_vec(len: u64) -> Vec<u8> {
-    let mut v = Vec::new();
-    for i in range(0u, 8) {
-        v.push((len >> (8 * i)) as u8);
-    }
-    v
+pub fn u64_le_array(x: u64) -> [u8, ..8] {
+    unsafe { mem::transmute(x.to_le()) }
 }

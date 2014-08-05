@@ -3,7 +3,7 @@ use std::io::MemWriter;
 use tls_result::{TlsResult, UnexpectedMessage, RecordOverflow, BadRecordMac, AlertReceived};
 use alert::Alert;
 use handshake::{Handshake, HandshakeBuffer};
-use util::u64_be_vec;
+use util::u64_be_array;
 use cipher::{Encryptor, Decryptor};
 use tls_item::TlsItem;
 use super::TLS_VERSION;
@@ -102,7 +102,7 @@ impl<W: Writer> RecordWriter<W> {
                                          record.ver_minor,
                                          record.fragment),
             Some(ref mut encryptor) => {
-                let seq_num = u64_be_vec(self.write_count);
+                let seq_num = u64_be_array(self.write_count);
 
                 let mut ad = Vec::new();
                 ad.push_all(seq_num.as_slice());
@@ -243,7 +243,7 @@ impl<R: Reader> RecordReader<R> {
                                 enc_record.ver_minor,
                                 enc_record.fragment),
             Some(ref mut decryptor) => {
-                let seq_num = u64_be_vec(self.read_count);
+                let seq_num = u64_be_array(self.read_count);
 
                 let mut ad = Vec::new();
                 ad.push_all(seq_num.as_slice());
