@@ -139,22 +139,12 @@ impl<W: Writer> RecordWriter<W> {
     }
 
     pub fn write_data(&mut self, ty: ContentType, data: &[u8]) -> TlsResult<()> {
-        let len = data.len();
-        let mut offset = 0;
-        let mut remaining = len;
-        while offset < len {
-            // TODO: configurable maxlen
-            let fragment_len = if remaining > RECORD_MAX_LEN {
-                RECORD_MAX_LEN
-            } else {
-                remaining
-            };
-            let fragment = Vec::from_slice(data.slice(offset, offset + fragment_len));
-
-            let record = Record::new(ty, 3, 3, fragment);
+        let (major, minor) = TLS_VERSION;
+        // TODO: configurable maxlen
+        for fragment in data.chunks(RECORD_MAX_LEN) {
+            let fragment = Vec::from_slice(fragment);
+            let record = Record::new(ty, major, minor, fragment);
             try!(self.write_record(record));
-            offset += fragment_len as uint;
-            remaining -= fragment_len as uint;
         }
 
         Ok(())

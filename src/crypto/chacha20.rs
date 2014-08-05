@@ -141,20 +141,10 @@ impl ChaCha20 {
     pub fn encrypt(&mut self, data: &[u8]) -> Vec<u8> {
         let mut ret: Vec<u8> = Vec::new();
 
-        let len = data.len();
-        let mut offset = 0u;
-        while len - offset > 0 {
-            let block_len = if len - offset < 64 {
-                len - offset
-            } else {
-                64
-            };
-
+        for chunk in data.chunks(64) {
             let next = self.next();
-            for i in range(0u, block_len) {
-                ret.push(next[i] ^ data[offset + i]);
-            }
-            offset += block_len;
+            let xor_iter = next.iter().zip(chunk.iter()).map(|(&x, &y)| x ^ y);
+            ret.extend(xor_iter);
         }
 
         ret
