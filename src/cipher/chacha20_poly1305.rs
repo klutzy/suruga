@@ -76,20 +76,20 @@ impl Decryptor for ChaCha20Poly1305Decryptor {
 
         let mac_computed = compute_mac(poly1305_key.as_slice(), encrypted.as_slice(), ad);
 
-        {
-            let mut diff = 0u8;
-            for i in range(0u, MAC_LEN) {
-                diff |= mac_computed[i] ^ mac_expected[i];
-            }
+        // SECRET
+        // even if `mac_computed != mac_expected`, decrypt the data to prevent timing attack.
+        let plain = chacha20.encrypt(encrypted);
 
-            if diff != 0 {
-                return tls_err!(BadRecordMac, "wrong mac");
-            }
+        let mut diff = 0u8;
+        for i in range(0u, MAC_LEN) {
+            diff |= mac_computed[i] ^ mac_expected[i];
         }
 
-        // SECRET
-        let plain = chacha20.encrypt(encrypted);
-        Ok(plain)
+        if diff != 0 {
+            tls_err!(BadRecordMac, "wrong mac")
+        } else {
+            Ok(plain)
+        }
     }
 
     #[inline(always)]
