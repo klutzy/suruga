@@ -3,7 +3,7 @@ use std::io::MemWriter;
 use tls_result::{TlsResult, UnexpectedMessage, RecordOverflow, BadRecordMac, AlertReceived};
 use alert::Alert;
 use handshake::{Handshake, HandshakeBuffer};
-use util::u64_be_vec;
+use util::u64_be_array;
 use cipher::{Encryptor, Decryptor};
 use tls_item::TlsItem;
 use super::TLS_VERSION;
@@ -102,7 +102,7 @@ impl<W: Writer> RecordWriter<W> {
                                          record.ver_minor,
                                          record.fragment),
             Some(ref mut encryptor) => {
-                let seq_num = u64_be_vec(self.write_count);
+                let seq_num = u64_be_array(self.write_count);
 
                 let mut ad = Vec::new();
                 ad.push_all(seq_num.as_slice());
@@ -139,22 +139,12 @@ impl<W: Writer> RecordWriter<W> {
     }
 
     pub fn write_data(&mut self, ty: ContentType, data: &[u8]) -> TlsResult<()> {
-        let len = data.len();
-        let mut offset = 0;
-        let mut remaining = len;
-        while offset < len {
-            // TODO: configurable maxlen
-            let fragment_len = if remaining > RECORD_MAX_LEN {
-                RECORD_MAX_LEN
-            } else {
-                remaining
-            };
-            let fragment = Vec::from_slice(data.slice(offset, offset + fragment_len));
-
-            let record = Record::new(ty, 3, 3, fragment);
+        let (major, minor) = TLS_VERSION;
+        // TODO: configurable maxlen
+        for fragment in data.chunks(RECORD_MAX_LEN) {
+            let fragment = Vec::from_slice(fragment);
+            let record = Record::new(ty, major, minor, fragment);
             try!(self.write_record(record));
-            offset += fragment_len as uint;
-            remaining -= fragment_len as uint;
         }
 
         Ok(())
@@ -243,7 +233,7 @@ impl<R: Reader> RecordReader<R> {
                                 enc_record.ver_minor,
                                 enc_record.fragment),
             Some(ref mut decryptor) => {
-                let seq_num = u64_be_vec(self.read_count);
+                let seq_num = u64_be_array(self.read_count);
 
                 let mut ad = Vec::new();
                 ad.push_all(seq_num.as_slice());

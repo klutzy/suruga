@@ -7,7 +7,7 @@
 
 use crypto::chacha20::ChaCha20;
 use crypto::poly1305;
-use util::u64_le_vec;
+use util::u64_le_array;
 use tls_result::{TlsResult, BadRecordMac};
 use super::{Encryptor, Decryptor, Aead};
 
@@ -22,7 +22,7 @@ fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8, ..MAC_LEN] 
     // note that in draft-agl-tls-chacha20poly1305-01 length is first
     fn push_all_with_len(vec: &mut Vec<u8>, data: &[u8]) {
         vec.push_all(data);
-        vec.push_all_move(u64_le_vec(data.len() as u64));
+        vec.push_all(u64_le_array(data.len() as u64).as_slice());
     }
 
     push_all_with_len(&mut msg, ad);

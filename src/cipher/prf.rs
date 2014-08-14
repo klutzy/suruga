@@ -1,6 +1,7 @@
 // In AEAD setting, PRF is only used for key calculation.
 // SHA-256 only for now.
 
+use std::mem;
 use crypto::sha2::sha256;
 
 // key is SECRET, but the length is publicly known.
@@ -61,17 +62,21 @@ impl Prf {
     }
 
     pub fn get_bytes(&mut self, size: uint) -> Vec<u8> {
-        let mut ret = Vec::new();
-        let buflen = self.buf.len();
-        if buflen > 0 {
-            if buflen <= size {
-                ret.push_all(self.buf.as_slice());
-                self.buf = Vec::new();
+        let mut ret = {
+            let buflen = self.buf.len();
+            if buflen > 0 {
+                if buflen <= size {
+                    mem::replace(&mut self.buf, Vec::new())
+                } else {
+                    let rest = self.buf.slice_from(size).to_vec();
+                    let mut buf = mem::replace(&mut self.buf, rest);
+                    buf.truncate(size);
+                    buf
+                }
             } else {
-                ret.push_all(self.buf.slice_to(size));
-                self.buf = self.buf.slice_from(size).to_vec();
+                Vec::new()
             }
-        }
+        };
 
         while ret.len() < size {
             let next_block = self.next_block();
