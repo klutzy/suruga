@@ -1,4 +1,4 @@
-#![feature(macro_rules, phase, globs)]
+#![feature(macro_rules, phase)]
 #![crate_type = "lib"]
 #![crate_name = "suruga"]
 

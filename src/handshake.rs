@@ -341,7 +341,9 @@ mod test {
     use std::io::{MemReader, MemWriter};
     use tls_item::TlsItem;
     use cipher;
-    use super::*;
+
+    use super::{ProtocolVersion, SessionId, CipherSuiteVec, CompressionMethodVec, ClientHello,
+                client_hello, Handshake, Random, null};
 
     #[test]
     fn test_parse_client_hello() {
