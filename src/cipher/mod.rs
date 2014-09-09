@@ -13,8 +13,8 @@ pub trait Aead {
     fn key_size(&self) -> uint;
     fn fixed_iv_len(&self) -> uint;
     fn mac_len(&self) -> uint;
-    fn new_encryptor(&self, key: Vec<u8>) -> Box<Encryptor>;
-    fn new_decryptor(&self, key: Vec<u8>) -> Box<Decryptor>;
+    fn new_encryptor(&self, key: Vec<u8>) -> Box<Encryptor + 'static>;
+    fn new_decryptor(&self, key: Vec<u8>) -> Box<Decryptor + 'static>;
 }
 
 pub trait Encryptor {
