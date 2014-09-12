@@ -77,7 +77,7 @@ impl EncryptedRecord {
 // W: Writer
 pub struct RecordWriter<W> {
     writer: W,
-    encryptor: Option<Box<Encryptor>>,
+    encryptor: Option<Box<Encryptor + 'static>>,
     write_count: u64,
 }
 
@@ -90,7 +90,7 @@ impl<W: Writer> RecordWriter<W> {
         }
     }
 
-    pub fn set_encryptor(&mut self, encryptor: Box<Encryptor>) {
+    pub fn set_encryptor(&mut self, encryptor: Box<Encryptor + 'static>) {
         self.encryptor = Some(encryptor);
         self.write_count = 0;
     }
@@ -183,7 +183,7 @@ pub enum Message {
 // R: Reader
 pub struct RecordReader<R> {
     reader: R,
-    decryptor: Option<Box<Decryptor>>,
+    decryptor: Option<Box<Decryptor + 'static>>,
     read_count: u64,
     handshake_buffer: HandshakeBuffer,
 }
@@ -198,7 +198,7 @@ impl<R: Reader> RecordReader<R> {
         }
     }
 
-    pub fn set_decryptor(&mut self, decryptor: Box<Decryptor>) {
+    pub fn set_decryptor(&mut self, decryptor: Box<Decryptor + 'static>) {
         self.decryptor = Some(decryptor);
         self.read_count = 0;
     }

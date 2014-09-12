@@ -117,7 +117,7 @@ impl Aead for ChaCha20Poly1305 {
     }
 
     #[inline(always)]
-    fn new_encryptor(&self, key: Vec<u8>) -> Box<Encryptor> {
+    fn new_encryptor(&self, key: Vec<u8>) -> Box<Encryptor + 'static> {
         let encryptor = ChaCha20Poly1305Encryptor {
             key: key,
         };
@@ -125,7 +125,7 @@ impl Aead for ChaCha20Poly1305 {
     }
 
     #[inline(always)]
-    fn new_decryptor(&self, key: Vec<u8>) -> Box<Decryptor> {
+    fn new_decryptor(&self, key: Vec<u8>) -> Box<Decryptor + 'static> {
         let decryptor = ChaCha20Poly1305Decryptor {
             key: key,
         };
