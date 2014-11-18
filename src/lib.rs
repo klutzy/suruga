@@ -1,4 +1,4 @@
-#![feature(macro_rules, phase)]
+#![feature(macro_rules, phase, slicing_syntax)]
 #![crate_type = "lib"]
 #![crate_name = "suruga"]
 
@@ -12,7 +12,7 @@ use std::slice::bytes::copy_memory;
 use std::io::net::tcp::TcpStream;
 
 use tls_result::{TlsResult, TlsError};
-use tls_result::{UnexpectedMessage, InternalError, DecryptError, IllegalParameter};
+use tls_result::TlsErrorKind::{UnexpectedMessage, InternalError, DecryptError, IllegalParameter};
 use util::crypto_compare;
 use record::{RecordWriter, RecordReader};
 use cipher::Aead;
@@ -68,8 +68,8 @@ impl<R: Reader, W: Writer> Tls<R, W> {
 
     pub fn close(&mut self) -> TlsResult<()> {
         let alert_data = alert::Alert {
-            level: alert::fatal,
-            description: alert::close_notify,
+            level: alert::AlertLevel::fatal,
+            description: alert::AlertDescription::close_notify,
         };
         try!(self.writer.write_alert(&alert_data));
         Ok(())
@@ -79,7 +79,7 @@ impl<R: Reader, W: Writer> Tls<R, W> {
     // (it may be different to `err`, because writing alert can fail)
     fn send_tls_alert(&mut self, err: TlsError) -> TlsError {
         match err.kind {
-            tls_result::IoFailure => return err,
+            tls_result::TlsErrorKind::IoFailure => return err,
             _ => {
                 let alert = alert::Alert::from_tls_err(&err);
                 let result = self.writer.write_alert(&alert);
@@ -119,7 +119,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         macro_rules! expect(
             ($var:ident) => ({
                 match try!(self.tls.reader.read_handshake()) {
-                    handshake::$var(data) => data,
+                    handshake::Handshake::$var(data) => data,
                     _ => return tls_err!(UnexpectedMessage, "unexpected handshake message found"),
                 }
             })
@@ -133,12 +133,12 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         let random = try!(handshake::Random::new(cli_random.clone()));
 
         // the only cipher we currently support
-        let cipher_suite = cipher::TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256;
+        let cipher_suite = cipher::CipherSuite::TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256;
 
-        let curve_list = vec!(handshake::secp256r1);
+        let curve_list = vec!(handshake::NamedCurve::secp256r1);
         let curve_list = try!(handshake::Extension::new_elliptic_curve_list(curve_list));
 
-        let format_list = vec!(handshake::uncompressed);
+        let format_list = vec!(handshake::ECPointFormat::uncompressed);
         let format_list = try!(handshake::Extension::new_ec_point_formats(format_list));
 
         let extensions = vec!(curve_list, format_list);
@@ -163,7 +163,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                                 server_hello_data.cipher_suite);
             }
 
-            if server_hello_data.compression_method != handshake::null {
+            if server_hello_data.compression_method != handshake::CompressionMethod::null {
                 return tls_err!(IllegalParameter, "compression method mismatch");
             }
 
@@ -229,10 +229,10 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         let msgs = {
             let mut msgs = MemWriter::new();
             try!(client_hello.tls_write(&mut msgs));
-            try!(handshake::server_hello(server_hello_data).tls_write(&mut msgs));
-            try!(handshake::certificate(certificate_list).tls_write(&mut msgs));
-            try!(handshake::server_key_exchange(server_key_ex_data).tls_write(&mut msgs));
-            try!(handshake::server_hello_done(DummyItem).tls_write(&mut msgs));
+            try!(Handshake::server_hello(server_hello_data).tls_write(&mut msgs));
+            try!(Handshake::certificate(certificate_list).tls_write(&mut msgs));
+            try!(Handshake::server_key_exchange(server_key_ex_data).tls_write(&mut msgs));
+            try!(Handshake::server_hello_done(DummyItem).tls_write(&mut msgs));
             try!(client_key_exchange.tls_write(&mut msgs));
             msgs.unwrap()
         };
@@ -348,12 +348,12 @@ impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
                         break; // FIXME: stop if EOF. otherwise raise error?
                     }
                 };
-                self.buf.push_all_move(data);
+                self.buf.push_all(data[]);
             }
 
             let selflen = self.buf.len();
             let necessary = cmp::min(remaining, selflen);
-            copy_memory(buf.mut_slice(pos, pos + necessary), self.buf.slice_to(necessary));
+            copy_memory(buf[mut pos .. pos + necessary], self.buf[.. necessary]);
             pos += necessary;
 
             self.buf = self.buf.slice_from(necessary).to_vec();

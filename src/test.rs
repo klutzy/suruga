@@ -1,8 +1,9 @@
-use std::io::{MemReader, MemWriter};
+use std::io::{MemReader, MemWriter, ByRefReader, ByRefWriter};
 use std::rand::OsRng;
 
 use super::Tls;
-use record::{ApplicationDataMessage, ChangeCipherSpecMessage, RECORD_MAX_LEN};
+use record::Message::{ApplicationDataMessage, ChangeCipherSpecMessage};
+use record::RECORD_MAX_LEN;
 
 #[test]
 fn test_change_cipher_spec_message() {
@@ -26,7 +27,7 @@ fn test_change_cipher_spec_message() {
         let msg = tls.reader.read_message().unwrap();
         match msg {
             ChangeCipherSpecMessage => {},
-            _ => fail!(),
+            _ => panic!(),
         }
     }
 }
@@ -54,7 +55,7 @@ fn test_application_message() {
             ApplicationDataMessage(msg) => {
                 assert_eq!(msg, Vec::from_elem(RECORD_MAX_LEN, 1u8));
             },
-            _ => fail!(),
+            _ => panic!(),
         }
 
         let msg = tls.reader.read_message().unwrap();
@@ -62,7 +63,7 @@ fn test_application_message() {
             ApplicationDataMessage(msg) => {
                 assert_eq!(msg, Vec::from_elem(200, 1u8));
             },
-            _ => fail!(),
+            _ => panic!(),
         }
     }
 }

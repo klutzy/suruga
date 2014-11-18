@@ -20,7 +20,7 @@ macro_rules! iotry(
             match $e {
                 Ok(ok) => ok,
                 Err(err) => {
-                    return tls_err!(::tls_result::IoFailure, "io error: {}", err);
+                    return tls_err!(::tls_result::TlsErrorKind::IoFailure, "io error: {}", err);
                 }
             }
         }

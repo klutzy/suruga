@@ -1,5 +1,4 @@
 use tls_result::{TlsResult, TlsError, TlsErrorKind};
-use tls_result;
 use tls_item::TlsItem;
 
 // we treat every alert as fatal.
@@ -47,17 +46,17 @@ tls_enum!(u8 #[deriving(Show)] enum AlertDescription {
 impl AlertDescription {
     fn from_err(kind: TlsErrorKind) -> AlertDescription {
         match kind {
-            tls_result::UnexpectedMessage => unexpected_message,
-            tls_result::BadRecordMac => bad_record_mac,
-            tls_result::RecordOverflow => record_overflow,
-            tls_result::IllegalParameter => illegal_parameter,
-            tls_result::DecodeError => decode_error,
-            tls_result::DecryptError => decrypt_error,
-            tls_result::InternalError => internal_error,
+            TlsErrorKind::UnexpectedMessage => AlertDescription::unexpected_message,
+            TlsErrorKind::BadRecordMac => AlertDescription::bad_record_mac,
+            TlsErrorKind::RecordOverflow => AlertDescription::record_overflow,
+            TlsErrorKind::IllegalParameter => AlertDescription::illegal_parameter,
+            TlsErrorKind::DecodeError => AlertDescription::decode_error,
+            TlsErrorKind::DecryptError => AlertDescription::decrypt_error,
+            TlsErrorKind::InternalError => AlertDescription::internal_error,
 
             // FIXME: we probably can't even send alert?
-            tls_result::IoFailure => internal_error,
-            tls_result::AlertReceived => close_notify,
+            TlsErrorKind::IoFailure => AlertDescription::internal_error,
+            TlsErrorKind::AlertReceived => AlertDescription::close_notify,
         }
 
     }
@@ -79,7 +78,7 @@ impl Alert {
 
     pub fn from_tls_err(err: &TlsError) -> Alert {
         Alert {
-            level: fatal,
+            level: AlertLevel::fatal,
             description: AlertDescription::from_err(err.kind),
         }
     }

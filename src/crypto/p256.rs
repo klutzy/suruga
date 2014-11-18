@@ -13,7 +13,7 @@ pub struct Point256 {
     z: Int256,
 }
 
-pub static G: Point256 = Point256 {
+pub const G: Point256 = Point256 {
     x: Int256 {
         v: [0xd898c296, 0xf4a13945, 0x2deb33a0, 0x77037d81,
             0x63a440f2, 0xf8bce6e5, 0xe12c4247, 0x6b17d1f2]
@@ -25,12 +25,12 @@ pub static G: Point256 = Point256 {
     z: ONE,
 };
 
-pub static B: Int256 = Int256 {
+pub const B: Int256 = Int256 {
     v: [0x27d2604b, 0x3bce3c3e, 0xcc53b0f6, 0x651d06b0,
         0x769886bc, 0xb3ebbd55, 0xaa3a93e7, 0x5ac635d8]
 };
 
-static INFTY: Point256 = Point256 {
+const INFTY: Point256 = Point256 {
     x: ONE,
     y: ONE,
     z: ZERO,
@@ -261,14 +261,14 @@ impl NPoint256 {
         // 0x04 || self.x (big endian) || self.y (big endian)
         let mut b = Vec::with_capacity(1 + (256 / 8) * 2);
         b.push(0x04); // uncompressed
-        b.push_all_move(self.x.to_bytes());
-        b.push_all_move(self.y.to_bytes());
+        b.push_all(self.x.to_bytes()[]);
+        b.push_all(self.y.to_bytes()[]);
         b
     }
 }
 
 pub mod int256 {
-    static LIMBS: uint = 8;
+    const LIMBS: uint = 8;
 
     // 2^32-radix: value = v[0] + 2^32 v[1] + ... + 2^124 v[7]
     // value must be < P256
@@ -277,12 +277,12 @@ pub mod int256 {
     }
 
     // P256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
-    pub static P256: Int256 = Int256 {
+    pub const P256: Int256 = Int256 {
         v: [0xffffffff, 0xffffffff, 0xffffffff, 0x00000000,
             0x00000000, 0x00000000, 0x00000001, 0xffffffff]
     };
-    pub static ZERO: Int256 = Int256 { v: [0, ..LIMBS] };
-    pub static ONE: Int256 = Int256 { v: [1, 0, 0, 0, 0, 0, 0, 0] };
+    pub const ZERO: Int256 = Int256 { v: [0, ..LIMBS] };
+    pub const ONE: Int256 = Int256 { v: [1, 0, 0, 0, 0, 0, 0, 0] };
 
     impl Clone for Int256 {
         fn clone(&self) -> Int256 {
@@ -572,7 +572,7 @@ pub mod int256 {
             for i in range(0u, LIMBS) {
                 let vi = self.v[LIMBS - 1 - i];
                 for j in range(0u, 4) {
-                    *b.get_mut(i * 4 + j) = (vi >> ((3 - j) * 8)) as u8;
+                    b[i * 4 + j] = (vi >> ((3 - j) * 8)) as u8;
                 }
             }
 
@@ -604,18 +604,18 @@ pub mod int256 {
 
         impl PartialEq for Int256 {
             fn eq(&self, b: &Int256) -> bool {
-                self.v.as_slice() == b.v.as_slice()
+                self.v[] == b.v[]
             }
         }
 
         impl ::std::fmt::Show for Int256 {
             fn fmt(&self, a: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                self.v.as_slice().fmt(a)
+                self.v[].fmt(a)
             }
         }
 
         // FIXME more values
-        static values_256: &'static [Int256] = &[
+        static VALUES_256: &'static [Int256] = &[
             ZERO,
             ONE,
             Int256 { v: [2, 0, 0, 0, 0, 0, 0, 0] },
@@ -628,8 +628,8 @@ pub mod int256 {
 
         #[test]
         fn test_int256_compare() {
-            for a in values_256.iter() {
-                for b in values_256.iter() {
+            for a in VALUES_256.iter() {
+                for b in VALUES_256.iter() {
                     if a == b {
                         assert_eq!(a.compare(b), 0);
                     } else {
@@ -660,13 +660,13 @@ pub mod int256 {
 
         #[test]
         fn test_int256_add() {
-            for a in values_256.iter() {
+            for a in VALUES_256.iter() {
                 assert_eq!(a.add(&ZERO), *a);
 
-                for b in values_256.iter() {
+                for b in VALUES_256.iter() {
                     let ab = a.add(b);
                     assert_eq!(ab, b.add(a));
-                    for c in values_256.iter() {
+                    for c in VALUES_256.iter() {
                         let abc = ab.add(c);
                         let acb = a.add(c).add(b);
                         assert_eq!(abc, acb);
@@ -680,17 +680,17 @@ pub mod int256 {
 
         #[test]
         fn test_int256_sub() {
-            for a in values_256.iter() {
+            for a in VALUES_256.iter() {
                 assert_eq!(a.sub(&ZERO), *a);
                 assert_eq!(a.sub(a), ZERO);
 
-                for b in values_256.iter() {
+                for b in VALUES_256.iter() {
                     assert_eq!(a.sub(b).add(b), *a);
 
                     let ab = a.sub(b);
                     assert_eq!(ab.reduce_once(0), ab);
 
-                    for c in values_256.iter() {
+                    for c in VALUES_256.iter() {
                         let abc = ab.sub(c);
                         let ac = a.sub(c);
                         let acb = ac.sub(b);
@@ -706,14 +706,14 @@ pub mod int256 {
 
         #[test]
         fn test_int256_mult() {
-            for a in values_256.iter() {
+            for a in VALUES_256.iter() {
                 assert_eq!(a.mult(&ONE), *a);
                 assert_eq!(a.mult(&ZERO), ZERO);
 
-                for b in values_256.iter() {
+                for b in VALUES_256.iter() {
                     let ab = a.mult(b);
                     assert_eq!(ab, b.mult(a));
-                    for c in values_256.iter() {
+                    for c in VALUES_256.iter() {
                         let ac = a.mult(c);
 
                         let abc = ab.mult(c);
@@ -736,7 +736,7 @@ pub mod int256 {
         fn test_int256_inverse() {
             assert_eq!(ONE.inverse(), ONE);
 
-            for a in values_256.iter() {
+            for a in VALUES_256.iter() {
                 if *a == ZERO {
                     continue;
                 }
@@ -752,7 +752,7 @@ pub mod int256 {
 
         #[test]
         fn test_int256_divide_by_2() {
-            for a in values_256.iter() {
+            for a in VALUES_256.iter() {
                 let a_half = a.divide_by_2();
                 assert_eq!(a_half, a_half.reduce_once(0));
                 let a_half_2 = a_half.add(&a_half);
@@ -762,9 +762,9 @@ pub mod int256 {
 
         #[test]
         fn test_from_bytes() {
-            for a in values_256.iter() {
+            for a in VALUES_256.iter() {
                 let b = a.to_bytes();
-                let aa = Int256::from_bytes(b.as_slice()).expect("to_bytes failed");
+                let aa = Int256::from_bytes(b[]).expect("to_bytes failed");
                 assert_eq!(*a, aa);
             }
         }

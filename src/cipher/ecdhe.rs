@@ -1,7 +1,8 @@
 use std::rand::{Rng, OsRng};
 use std::io::{BufReader, MemWriter};
 
-use tls_result::{TlsResult, IllegalParameter};
+use tls_result::TlsResult;
+use tls_result::TlsErrorKind::IllegalParameter;
 use tls_item::TlsItem;
 use crypto::p256;
 use handshake::NamedCurve;

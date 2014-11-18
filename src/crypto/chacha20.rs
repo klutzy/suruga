@@ -158,8 +158,8 @@ mod test {
     fn check_keystream(key: &[u8], nonce: &[u8], keystream: &[u8]) {
         let mut chacha = ChaCha20::new(key, nonce);
         let input = Vec::from_elem(keystream.len(), 0u8);
-        let output = chacha.encrypt(input.as_slice());
-        assert_eq!(output.as_slice(), keystream);
+        let output = chacha.encrypt(input[]);
+        assert_eq!(output[], keystream);
     }
 
     #[test]
@@ -172,37 +172,37 @@ mod test {
                           \xbd\xd2\x19\xb8\xa0\x8d\xed\x1a\xa8\x36\xef\xcc\x8b\x77\x0d\xc7\
                           \xda\x41\x59\x7c\x51\x57\x48\x8d\x77\x24\xe0\x3f\xb8\xd8\x4a\x37\
                           \x6a\x43\xb8\xf4\x15\x18\xa1\x1c\xc3\x87\xb6\x69\xb2\xee\x65\x86";
-        check_keystream(key.as_slice(), nonce.as_slice(), keystream);
+        check_keystream(key[], nonce[], keystream);
 
-        *key.get_mut(31) = 1;
+        key[31] = 1;
         let keystream = b"\x45\x40\xf0\x5a\x9f\x1f\xb2\x96\xd7\x73\x6e\x7b\x20\x8e\x3c\x96\
                           \xeb\x4f\xe1\x83\x46\x88\xd2\x60\x4f\x45\x09\x52\xed\x43\x2d\x41\
                           \xbb\xe2\xa0\xb6\xea\x75\x66\xd2\xa5\xd1\xe7\xe2\x0d\x42\xaf\x2c\
                           \x53\xd7\x92\xb1\xc4\x3f\xea\x81\x7e\x9a\xd2\x75\xae\x54\x69\x63";
-        check_keystream(key.as_slice(), nonce.as_slice(), keystream);
+        check_keystream(key[], nonce[], keystream);
 
-        *key.get_mut(31) = 0;
-        *nonce.get_mut(7) = 1;
+        key[31] = 0;
+        nonce[7] = 1;
         let keystream = b"\xde\x9c\xba\x7b\xf3\xd6\x9e\xf5\xe7\x86\xdc\x63\x97\x3f\x65\x3a\
                           \x0b\x49\xe0\x15\xad\xbf\xf7\x13\x4f\xcb\x7d\xf1\x37\x82\x10\x31\
                           \xe8\x5a\x05\x02\x78\xa7\x08\x45\x27\x21\x4f\x73\xef\xc7\xfa\x5b\
                           \x52\x77\x06\x2e\xb7\xa0\x43\x3e\x44\x5f\x41\xe3";
-        check_keystream(key.as_slice(), nonce.as_slice(), keystream);
+        check_keystream(key[], nonce[], keystream);
 
-        *key.get_mut(31) = 0;
-        *nonce.get_mut(7) = 0;
-        *nonce.get_mut(0) = 1;
+        key[31] = 0;
+        nonce[7] = 0;
+        nonce[0] = 1;
         let keystream = b"\xef\x3f\xdf\xd6\xc6\x15\x78\xfb\xf5\xcf\x35\xbd\x3d\xd3\x3b\x80\
                           \x09\x63\x16\x34\xd2\x1e\x42\xac\x33\x96\x0b\xd1\x38\xe5\x0d\x32\
                           \x11\x1e\x4c\xaf\x23\x7e\xe5\x3c\xa8\xad\x64\x26\x19\x4a\x88\x54\
                           \x5d\xdc\x49\x7a\x0b\x46\x6e\x7d\x6b\xbd\xb0\x04\x1b\x2f\x58\x6b";
-        check_keystream(key.as_slice(), nonce.as_slice(), keystream);
+        check_keystream(key[], nonce[], keystream);
 
         for i in range(0u, 0x20) {
-            *key.get_mut(i) = i as u8;
+            key[i] = i as u8;
         }
         for i in range(0u, 0x08) {
-            *nonce.get_mut(i) = i as u8;
+            nonce[i] = i as u8;
         }
         let keystream = b"\xf7\x98\xa1\x89\xf1\x95\xe6\x69\x82\x10\x5f\xfb\x64\x0b\xb7\x75\
                           \x7f\x57\x9d\xa3\x16\x02\xfc\x93\xec\x01\xac\x56\xf8\x5a\xc3\xc1\
@@ -220,6 +220,6 @@ mod test {
                           \x1c\x89\x4c\x94\xa3\x71\x87\x6a\x94\xdf\x76\x28\xfe\x4e\xaa\xf2\
                           \xcc\xb2\x7d\x5a\xaa\xe0\xad\x7a\xd0\xf9\xd4\xb6\xad\x3b\x54\x09\
                           \x87\x46\xd4\x52\x4d\x38\x40\x7a\x6d\xeb\x3a\xb7\x8f\xab\x78\xc9";
-        check_keystream(key.as_slice(), nonce.as_slice(), keystream);
+        check_keystream(key[], nonce[], keystream);
     }
 }

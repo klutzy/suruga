@@ -1,6 +1,7 @@
 use std::io::MemReader;
 
-use tls_result::{TlsResult, InternalError, UnexpectedMessage};
+use tls_result::TlsResult;
+use tls_result::TlsErrorKind::{InternalError, UnexpectedMessage};
 use tls_item::{TlsItem, DummyItem, ObscureData};
 use signature::SignatureAndHashAlgorithmVec;
 use cipher::CipherSuite;
@@ -75,14 +76,14 @@ impl Extension {
     pub fn new_elliptic_curve_list(list: Vec<NamedCurve>) -> TlsResult<Extension> {
         let list = try!(EllipticCurveList::new(list));
         let list = try!(EllipticCurveListList::new(vec!(list)));
-        let list = elliptic_curves(list);
+        let list = Extension::elliptic_curves(list);
         Ok(list)
     }
 
     pub fn new_ec_point_formats(list: Vec<ECPointFormat>) -> TlsResult<Extension> {
         let list = try!(ECPointFormatList::new(list));
         let list = try!(ECPointFormatListList::new(vec!(list)));
-        let list = ec_point_formats(list);
+        let list = Extension::ec_point_formats(list);
         Ok(list)
     }
 }
@@ -112,7 +113,7 @@ macro_rules! tls_handshake(
             fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
                 match *self {
                     $(
-                        $name(ref body) => {
+                        Handshake::$name(ref body) => {
                             iotry!(writer.write_u8(tt_to_expr!($num)));
 
                             let len = body.tls_size();
@@ -143,7 +144,7 @@ macro_rules! tls_handshake(
                     $(
                         tt_to_pat!($num) => {
                             let body: $body_ty = try!(TlsItem::tls_read(reader));
-                            $name(body)
+                            Handshake::$name(body)
                         }
                     )+
                     _ => return tls_err!(UnexpectedMessage,
@@ -163,7 +164,7 @@ macro_rules! tls_handshake(
             fn tls_size(&self) -> u64 {
                 let body_len = match *self {
                     $(
-                        $name(ref body) => body.tls_size(),
+                        Handshake::$name(ref body) => body.tls_size(),
                     )+
                 };
                 // msg_type 1 byte, length 3 bytes
@@ -238,7 +239,7 @@ impl HandshakeBuffer {
     }
 
     pub fn add_record(&mut self, fragment: Vec<u8>) {
-        self.buf.push_all_move(fragment);
+        self.buf.push_all(fragment[]);
     }
 
     // if message is arrived but has unknown type, the message is discarded and returns error.
@@ -261,7 +262,7 @@ impl HandshakeBuffer {
 
         // FIXME bad clone?
         let (message, remaining) = {
-            let (message, remaining) = self.buf.mut_split_at(wanted_len);
+            let (message, remaining) = self.buf.split_at_mut(wanted_len);
             let message = message.to_vec();
             let remaining = remaining.to_vec();
             (message, remaining)
@@ -302,7 +303,7 @@ impl Handshake {
             };
 
             let compression_methods = {
-                let data = vec!(null);
+                let data = vec!(CompressionMethod::null);
                 try!(CompressionMethodVec::new(data))
             };
 
@@ -322,17 +323,17 @@ impl Handshake {
             }
         };
 
-        Ok(client_hello(client_hello_body))
+        Ok(Handshake::client_hello(client_hello_body))
     }
 
     pub fn new_client_key_exchange(data: Vec<u8>) -> TlsResult<Handshake> {
         let data = ObscureData::new(data);
-        Ok(client_key_exchange(data))
+        Ok(Handshake::client_key_exchange(data))
     }
 
     pub fn new_finished(data: Vec<u8>) -> TlsResult<Handshake> {
         let data = try!(VerifyData::new(data));
-        Ok(finished(data))
+        Ok(Handshake::finished(data))
     }
 }
 
@@ -340,10 +341,10 @@ impl Handshake {
 mod test {
     use std::io::{MemReader, MemWriter};
     use tls_item::TlsItem;
-    use cipher;
+    use cipher::CipherSuite;
 
-    use super::{ProtocolVersion, SessionId, CipherSuiteVec, CompressionMethodVec, ClientHello,
-                client_hello, Handshake, Random, null};
+    use super::{ProtocolVersion, SessionId, CipherSuiteVec, CompressionMethod,
+                CompressionMethodVec, ClientHello, Handshake, Random};
 
     #[test]
     fn test_parse_client_hello() {
@@ -369,12 +370,12 @@ mod test {
                 };
 
                 let cipher_suites = {
-                    let data = vec!(cipher::TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256);
+                    let data = vec!(CipherSuite::TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256);
                     CipherSuiteVec::new(data).unwrap()
                 };
 
                 let compression_methods = {
-                    let data = vec!(null);
+                    let data = vec!(CompressionMethod::null);
                     CompressionMethodVec::new(data).unwrap()
                 };
 
@@ -388,7 +389,7 @@ mod test {
                 }
             };
 
-            client_hello(client_hello_body)
+            Handshake::client_hello(client_hello_body)
         };
 
         let mut writer = MemWriter::new();

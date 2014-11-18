@@ -1,12 +1,17 @@
 use std::io::MemWriter;
 
-use tls_result::{TlsResult, UnexpectedMessage, RecordOverflow, BadRecordMac, AlertReceived};
+use tls_result::TlsResult;
+use tls_result::TlsErrorKind::{UnexpectedMessage, RecordOverflow, BadRecordMac, AlertReceived};
 use alert::Alert;
 use handshake::{Handshake, HandshakeBuffer};
 use util::u64_be_array;
 use cipher::{Encryptor, Decryptor};
 use tls_item::TlsItem;
 use super::TLS_VERSION;
+
+use self::ContentType::{ChangeCipherSpecTy, AlertTy, HandshakeTy, ApplicationDataTy};
+use self::Message::{HandshakeMessage, ChangeCipherSpecMessage, AlertMessage,
+                    ApplicationDataMessage};
 
 #[repr(u8)]
 #[deriving(PartialEq, FromPrimitive, Show)]
@@ -37,7 +42,7 @@ impl Record {
     pub fn new(content_type: ContentType, ver_major: u8, ver_minor: u8, fragment: Vec<u8>) -> Record {
         let len = fragment.len();
         if len > RECORD_MAX_LEN {
-            fail!("record too long: {} > 2^14", len);
+            panic!("record too long: {} > 2^14", len);
         }
 
         Record {
@@ -62,7 +67,7 @@ impl EncryptedRecord {
     pub fn new(content_type: ContentType, ver_major: u8, ver_minor: u8, fragment: Vec<u8>) -> EncryptedRecord {
         let len = fragment.len();
         if len > ENC_RECORD_MAX_LEN {
-            fail!("record too long: {} > 2^14 + 2048", len);
+            panic!("record too long: {} > 2^14 + 2048", len);
         }
 
         EncryptedRecord {
@@ -142,7 +147,7 @@ impl<W: Writer> RecordWriter<W> {
         let (major, minor) = TLS_VERSION;
         // TODO: configurable maxlen
         for fragment in data.chunks(RECORD_MAX_LEN) {
-            let fragment = Vec::from_slice(fragment);
+            let fragment = fragment.to_vec();
             let record = Record::new(ty, major, minor, fragment);
             try!(self.write_record(record));
         }

@@ -1,6 +1,7 @@
 use std::rand::OsRng;
 
-use tls_result::{TlsResult, UnexpectedMessage};
+use tls_result::TlsResult;
+use tls_result::TlsErrorKind::UnexpectedMessage;
 use tls_item::TlsItem;
 use self::chacha20_poly1305::ChaCha20Poly1305;
 use self::ecdhe::EllipticDiffieHellman;
@@ -34,15 +35,6 @@ pub trait KeyExchange {
     fn compute_keys(&self, data: &[u8], rng: &mut OsRng) -> TlsResult<(Vec<u8>, Vec<u8>)>;
 }
 
-#[allow(non_camel_case_types)]
-#[deriving(PartialEq, Show)]
-enum Mac {
-    // MAC_NULL,
-    // MAC_MD5,
-    // MAC_SHA,
-    MAC_SHA256,
-}
-
 macro_rules! cipher_suite(
     ($(
         $id:ident = $kex:ident $cipher:ident $mac:ident $v1:expr $v2:expr;
@@ -60,18 +52,18 @@ macro_rules! cipher_suite(
             pub fn new_aead(&self) -> Box<Aead> {
                 match *self {
                     $(
-                        $id => box $cipher as Box<Aead>,
+                        CipherSuite::$id => box $cipher as Box<Aead>,
                     )+
-                    UnknownCipherSuite => unreachable!(),
+                    CipherSuite::UnknownCipherSuite => unreachable!(),
                 }
             }
 
             pub fn new_kex(&self) -> Box<KeyExchange> {
                 match *self {
                     $(
-                        $id => box $kex as Box<KeyExchange>,
+                        CipherSuite::$id => box $kex as Box<KeyExchange>,
                     )+
-                    UnknownCipherSuite => unreachable!(),
+                    CipherSuite::UnknownCipherSuite => unreachable!(),
                 }
             }
 
@@ -82,7 +74,7 @@ macro_rules! cipher_suite(
         impl TlsItem for CipherSuite {
             fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
                 $(
-                    if *self == $id {
+                    if *self == CipherSuite::$id {
                         iotry!(writer.write_u8($v1));
                         iotry!(writer.write_u8($v2));
                         return Ok(());
@@ -97,11 +89,11 @@ macro_rules! cipher_suite(
                 let id2 = iotry!(reader.read_u8());
                 $(
                     if id1 == $v1 && id2 == $v2 {
-                        return Ok($id);
+                        return Ok(CipherSuite::$id);
                     }
                 )+
                 // client may send cipher suites we don't know
-                return Ok(UnknownCipherSuite);
+                return Ok(CipherSuite::UnknownCipherSuite);
             }
 
             fn tls_size(&self) -> u64 {

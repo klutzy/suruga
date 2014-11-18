@@ -1,15 +1,13 @@
 // http://csrc.nist.gov/groups/STM/cavp/documents/shs/sha256-384-512.pdf
 // not seriously audited.
-// no serious consideration of side-channel issues.
 // no bit-level support. sorry
-// use this only for verification.
 
-static init_val: [u32, ..8] = [
+const INIT_VAL: [u32, ..8] = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
 ];
 
-static k: [u32, ..64] = [
+static K: [u32, ..64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
     0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -57,7 +55,7 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
 
     let nblk = msg.len() / (512 / 8);
 
-    let mut val = init_val;
+    let mut val = INIT_VAL;
 
     for i in range(0, nblk) {
         let w = {
@@ -100,7 +98,7 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
             let sig0 = rot(a, 2) ^ rot(a, 13) ^ rot(a, 22);
             let sig1 = rot(e, 6) ^ rot(e, 11) ^ rot(e, 25);
 
-            let t1 = h + sig1 + ch + k[j] + w[j];
+            let t1 = h + sig1 + ch + K[j] + w[j];
             let t2 = sig0 + maj;
 
             h = g;
@@ -140,7 +138,7 @@ mod test {
 
     #[test]
     fn test_sha256() {
-        static answers: &'static [(&'static [u8], &'static [u8])] = &[
+        static ANSWERS: &'static [(&'static [u8], &'static [u8])] = &[
             (b"",
              b"\xe3\xb0\xc4\x42\x98\xfc\x1c\x14\x9a\xfb\xf4\xc8\x99\x6f\xb9\x24\
                \x27\xae\x41\xe4\x64\x9b\x93\x4c\xa4\x95\x99\x1b\x78\x52\xb8\x55"),
@@ -152,7 +150,7 @@ mod test {
                \xa3\x3c\xe4\x59\x64\xff\x21\x67\xf6\xec\xed\xd4\x19\xdb\x06\xc1"),
         ];
 
-        for &(input, expected) in answers.iter() {
+        for &(input, expected) in ANSWERS.iter() {
             let computed = sha256(input);
             assert_eq!(expected, computed.as_slice());
         }

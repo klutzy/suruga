@@ -8,12 +8,13 @@
 use crypto::chacha20::ChaCha20;
 use crypto::poly1305;
 use util::u64_le_array;
-use tls_result::{TlsResult, BadRecordMac};
+use tls_result::TlsResult;
+use tls_result::TlsErrorKind::BadRecordMac;
 use super::{Encryptor, Decryptor, Aead};
 
-static KEY_LEN: uint = 256 / 8;
-static EXPLICIT_IV_LEN: uint = 0;
-static MAC_LEN: uint = 16;
+const KEY_LEN: uint = 256 / 8;
+const EXPLICIT_IV_LEN: uint = 0;
+const MAC_LEN: uint = 16;
 
 fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8, ..MAC_LEN] {
     let mut msg = Vec::new();

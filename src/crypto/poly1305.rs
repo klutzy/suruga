@@ -24,7 +24,7 @@ pub struct Int1305 {
     v: [u32, ..5],
 }
 
-pub static ZERO: Int1305 = Int1305 { v: [0, ..5] };
+pub const ZERO: Int1305 = Int1305 { v: [0, ..5] };
 
 choose_impl!(Int1305, u32, 0 1 2 3 4)
 
@@ -316,7 +316,7 @@ pub fn authenticate(msg: &[u8], r: &[u8, ..16], aes: &[u8, ..16]) -> [u8, ..16] 
 mod test {
     use super::Int1305;
 
-    static coeffs: &'static [Int1305] = &[
+    static COEFFS: &'static [Int1305] = &[
         super::ZERO,
         Int1305 { v: [1, 0, 0, 0, 0] },
         Int1305 { v: [1, 1, 1, 1, 1] },
@@ -339,22 +339,22 @@ mod test {
 
     impl PartialEq for Int1305 {
         fn eq(&self, b: &Int1305) -> bool {
-            self.normalize().v.as_slice() == b.normalize().v.as_slice()
+            self.normalize().v[] == b.normalize().v[]
         }
     }
 
     impl ::std::fmt::Show for Int1305 {
         fn fmt(&self, a: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-            (self.v.as_slice()).fmt(a)
+            (self.v[]).fmt(a)
         }
     }
 
     #[test]
     fn test_add() {
         // (a + b) + c == a + (b + c)
-        for a in coeffs.iter() {
-            for b in coeffs.iter() {
-                for c in coeffs.iter() {
+        for a in COEFFS.iter() {
+            for b in COEFFS.iter() {
+                for c in COEFFS.iter() {
                     let abc = a.add(b).add(c);
 
                     let bca = b.add(c).add(a);
@@ -370,15 +370,15 @@ mod test {
     #[test]
     fn test_normalize() {
         let p = Int1305 { v: [0x3fffffb, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff] };
-        assert_eq!(p.normalize().v.as_slice(), super::ZERO.v.as_slice());
+        assert_eq!(p.normalize().v[], super::ZERO.v[]);
 
         let large = Int1305 { v: [0, 10, 5, 10, 1 << 26] };
         let small = Int1305 { v: [5, 10, 5, 10, 0] };
 
-        assert_eq!(large.normalize().v.as_slice(), small.v.as_slice());
-        assert_eq!(small.normalize().v.as_slice(), small.v.as_slice());
+        assert_eq!(large.normalize().v[], small.v[]);
+        assert_eq!(small.normalize().v[], small.v[]);
 
-        for a in coeffs.iter() {
+        for a in COEFFS.iter() {
             assert_eq!(a.normalize(), *a);
         }
     }
@@ -386,9 +386,9 @@ mod test {
     #[test]
     fn test_mult() {
         // (a * b) * c == a * (b * c)
-        for a in coeffs.iter() {
-            for b in coeffs.iter() {
-                for c in coeffs.iter() {
+        for a in COEFFS.iter() {
+            for b in COEFFS.iter() {
+                for c in COEFFS.iter() {
                     let abc = a.mult(b).mult(c).normalize();
 
                     let bca = b.mult(c).mult(a).normalize();
@@ -404,7 +404,7 @@ mod test {
     #[test]
     fn test_poly1305_examples() {
         // from Appendix B of reference paper
-        static values: &'static [(&'static [u8],
+        static VALUES: &'static [(&'static [u8],
                                   [u8, ..16],
                                   [u8, ..16],
                                   [u8, ..16])] = &[
@@ -452,9 +452,9 @@ mod test {
               0x27, 0x4f, 0xc5, 0x11, 0x48, 0x49, 0x1f, 0x1b]),
         ];
 
-        for &(msg, ref r, ref aes, ref expected) in values.iter() {
+        for &(msg, ref r, ref aes, ref expected) in VALUES.iter() {
             let output = super::authenticate(msg, r, aes);
-            assert_eq!(output.as_slice(), expected.as_slice());
+            assert_eq!(output[], expected[]);
         }
     }
 }

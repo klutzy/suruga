@@ -101,7 +101,7 @@ mod test {
     #[test]
     fn test_hmac_sha256() {
         // some test vectors from RFC 4231
-        static values: &'static [(&'static [u8], &'static [u8], &'static [u8])] = &[
+        static VALUES: &'static [(&'static [u8], &'static [u8], &'static [u8])] = &[
             (b"\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\
                \x0b\x0b\x0b\x0b",
              b"\x48\x69\x20\x54\x68\x65\x72\x65",
@@ -130,7 +130,7 @@ mod test {
                \x85\xf0\xfa\xa3\xe5\x78\xf8\x07\x7a\x2e\x3f\xf4\x67\x29\x66\x5b"),
         ];
 
-        for &(key, input, expected) in values.iter() {
+        for &(key, input, expected) in VALUES.iter() {
             let actual = hmac_sha256(key, input);
             assert_eq!(actual.as_slice(), expected);
         }
@@ -142,7 +142,7 @@ mod test {
             let mut prf = Prf::new(b"", b"");
             let mut ret = Vec::new();
             for _ in range(0u, 100) {
-                ret.push_all_move(prf.get_bytes(1));
+                ret.push_all(prf.get_bytes(1)[]);
             }
             ret
         };
@@ -157,8 +157,8 @@ mod test {
         let ret3 = {
             let mut prf = Prf::new(b"", b"");
             let mut b = prf.get_bytes(33);
-            b.push_all_move(prf.get_bytes(33));
-            b.push_all_move(prf.get_bytes(100 - 33 * 2));
+            b.push_all(prf.get_bytes(33)[]);
+            b.push_all(prf.get_bytes(100 - 33 * 2)[]);
             b
         };
 

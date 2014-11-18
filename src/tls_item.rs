@@ -108,7 +108,8 @@ macro_rules! tls_enum(
                 let n: Option<$name> = FromPrimitive::from_u64(num);
                 match n {
                     Some(n) => Ok(n),
-                    None => tls_err!(::tls_result::DecodeError, "unexpected number: {}", num),
+                    None => tls_err!(::tls_result::TlsErrorKind::DecodeError,
+                                     "unexpected number: {}", num),
                 }
             }
 
@@ -153,7 +154,7 @@ macro_rules! tls_enum_struct(
             fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
                 match *self {
                     $(
-                        $name(ref body) => {
+                        $enum_name::$name(ref body) => {
                             stry_write_num!($repr_ty, writer, tt_to_expr!($num));
                             try!(body.tls_write(writer));
                         }
@@ -168,10 +169,11 @@ macro_rules! tls_enum_struct(
                     $(
                         tt_to_pat!($num) => {
                             let body: $body_ty = try!(TlsItem::tls_read(reader));
-                            Ok($name(body))
+                            Ok($enum_name::$name(body))
                         }
                     )+
-                    _ => return tls_err!(::tls_result::DecodeError, "unexpected value: {}", num),
+                    _ => return tls_err!(::tls_result::TlsErrorKind::DecodeError,
+                                         "unexpected value: {}", num),
                 }
             }
 
@@ -179,7 +181,7 @@ macro_rules! tls_enum_struct(
                 let prefix_size = num_size!($repr_ty);
                 let body_size = match *self {
                     $(
-                        $name(ref body) => body.tls_size(),
+                        $enum_name::$name(ref body) => body.tls_size(),
                     )+
                 };
                 prefix_size + body_size
@@ -198,7 +200,8 @@ macro_rules! tls_array(
                 let n: uint = $n;
                 let len = v.len();
                 if len != n {
-                    return tls_err!(::tls_result::InternalError, "bad size: {} != {}", len, n);
+                    return tls_err!(::tls_result::TlsErrorKind::InternalError,
+                                    "bad size: {} != {}", len, n);
                 } else {
                     Ok($name(v))
                 }
@@ -235,7 +238,7 @@ macro_rules! tls_vec(
         pub struct $name(Vec<$item_ty>);
         impl $name {
             pub fn new(v: Vec<$item_ty>) -> ::tls_result::TlsResult<$name> {
-                #![allow(type_limits)] // disable warnings for e.g. `size < 0`
+                #![allow(unused_comparisons)] // disable warnings for e.g. `size < 0`
 
                 let size_min: u64 = $size_min;
                 let size_max: u64 = $size_max;
@@ -243,12 +246,12 @@ macro_rules! tls_vec(
                 let ret = $name(v);
                 let size: u64 = ret.data_size();
                 if size < size_min {
-                    return tls_err!(::tls_result::DecodeError,
+                    return tls_err!(::tls_result::TlsErrorKind::DecodeError,
                                     "bad size: {} < {}",
                                     size,
                                     size_min);
                 } else if size > size_max {
-                    return tls_err!(::tls_result::DecodeError,
+                    return tls_err!(::tls_result::TlsErrorKind::DecodeError,
                     "bad size: {} > {}",
                     size,
                     size_max);
@@ -324,7 +327,7 @@ macro_rules! tls_vec(
                     items.push(item);
                 }
                 if items_size != self_size {
-                    return tls_err!(::tls_result::DecodeError,
+                    return tls_err!(::tls_result::TlsErrorKind::DecodeError,
                                     "wrong size: {} expected, {} found",
                                     self_size,
                                     items_size);
@@ -393,7 +396,7 @@ macro_rules! tls_option(
                     Err(err) => {
                         // read_to_end handles EndOfFile
                         // FIXME isn't this internal and/or io error?
-                        return tls_err!(::tls_result::DecodeError,
+                        return tls_err!(::tls_result::TlsErrorKind::DecodeError,
                                         "failed to read extensions: {}",
                                         err);
                     }

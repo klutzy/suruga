@@ -1,4 +1,5 @@
 use std::mem;
+use std::num::Int;
 
 /// constant-time compare function.
 /// `a` and `b` may be SECRET, but the length is known.
