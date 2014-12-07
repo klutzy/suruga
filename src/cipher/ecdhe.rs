@@ -1,5 +1,5 @@
 use std::rand::{Rng, OsRng};
-use std::io::{BufReader, MemWriter};
+use std::io::BufReader;
 
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::IllegalParameter;
@@ -70,9 +70,9 @@ impl KeyExchange for EllipticDiffieHellman {
         // we don't support client cert. send public key explicitly.
         let public = try!(EcData::new(gx));
 
-        let mut writer = MemWriter::new();
-        try!(public.tls_write(&mut writer));
-        let public = writer.unwrap();
+        let mut data = Vec::new();
+        try!(public.tls_write(&mut data));
+        let public = data;
 
         Ok((public, pre_master_secret))
     }

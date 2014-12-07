@@ -339,7 +339,7 @@ impl Handshake {
 
 #[cfg(test)]
 mod test {
-    use std::io::{MemReader, MemWriter};
+    use std::io::MemReader;
     use tls_item::TlsItem;
     use cipher::CipherSuite;
 
@@ -392,16 +392,14 @@ mod test {
             Handshake::client_hello(client_hello_body)
         };
 
-        let mut writer = MemWriter::new();
-        client_hello_msg.tls_write(&mut writer).unwrap();
-        let packet = writer.unwrap();
+        let mut packet = Vec::new();
+        client_hello_msg.tls_write(&mut packet).unwrap();
 
         let mut reader = MemReader::new(packet.clone());
         let client_hello_msg_2: Handshake = TlsItem::tls_read(&mut reader).unwrap();
 
-        let mut writer = MemWriter::new();
-        client_hello_msg_2.tls_write(&mut writer).unwrap();
-        let packet_2 = writer.unwrap();
+        let mut packet_2 = Vec::new();
+        client_hello_msg_2.tls_write(&mut packet_2).unwrap();
 
         assert_eq!(packet, packet_2);
     }

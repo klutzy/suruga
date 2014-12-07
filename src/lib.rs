@@ -6,7 +6,7 @@
 extern crate log;
 
 use std::cmp;
-use std::io::{MemWriter, IoResult, IoError, OtherIoError};
+use std::io::{IoResult, IoError, OtherIoError};
 use std::rand::{Rng, OsRng};
 use std::slice::bytes::copy_memory;
 use std::io::net::tcp::TcpStream;
@@ -227,14 +227,14 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
 
         // FIXME we should get "raw" packet data and hash them incrementally
         let msgs = {
-            let mut msgs = MemWriter::new();
+            let mut msgs = Vec::new();
             try!(client_hello.tls_write(&mut msgs));
             try!(Handshake::server_hello(server_hello_data).tls_write(&mut msgs));
             try!(Handshake::certificate(certificate_list).tls_write(&mut msgs));
             try!(Handshake::server_key_exchange(server_key_ex_data).tls_write(&mut msgs));
             try!(Handshake::server_hello_done(DummyItem).tls_write(&mut msgs));
             try!(client_key_exchange.tls_write(&mut msgs));
-            msgs.unwrap()
+            msgs
         };
 
         // this only verifies Handshake messages! what about others?
@@ -268,13 +268,12 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         {
             let verify_hash = {
                 // ideally we may save "raw" packet data..
-                let mut serv_msgs = MemWriter::new();
+                let mut serv_msgs = Vec::new();
                 // FIXME: this should not throw "io error".. should throw "internal error"
                 iotry!(serv_msgs.write(msgs.as_slice()));
                 try!(finished.tls_write(&mut serv_msgs));
 
-                let msgs = serv_msgs.unwrap();
-                let verify_hash = sha256(msgs.as_slice());
+                let verify_hash = sha256(serv_msgs.as_slice());
                 verify_hash
             };
 

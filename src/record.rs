@@ -1,5 +1,3 @@
-use std::io::MemWriter;
-
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{UnexpectedMessage, RecordOverflow, BadRecordMac, AlertReceived};
 use alert::Alert;
@@ -156,16 +154,14 @@ impl<W: Writer> RecordWriter<W> {
     }
 
     pub fn write_handshake(&mut self, handshake: &Handshake) -> TlsResult<()> {
-        let mut writer = MemWriter::new();
-        try!(handshake.tls_write(&mut writer));
-        let data = writer.unwrap();
+        let mut data = Vec::new();
+        try!(handshake.tls_write(&mut data));
         self.write_data(HandshakeTy, data.as_slice())
     }
 
     pub fn write_alert(&mut self, alert: &Alert) -> TlsResult<()> {
-        let mut writer = MemWriter::new();
-        try!(alert.tls_write(&mut writer));
-        let data = writer.unwrap();
+        let mut data = Vec::new();
+        try!(alert.tls_write(&mut data));
         self.write_data(AlertTy, data.as_slice())
     }
 
