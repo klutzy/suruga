@@ -77,8 +77,7 @@ impl EncryptedRecord {
     }
 }
 
-// W: Writer
-pub struct RecordWriter<W> {
+pub struct RecordWriter<W: Writer> {
     writer: W,
     encryptor: Option<Box<Encryptor + 'static>>,
     write_count: u64,
@@ -181,8 +180,7 @@ pub enum Message {
     ApplicationDataMessage(Vec<u8>),
 }
 
-// R: Reader
-pub struct RecordReader<R> {
+pub struct RecordReader<R: Reader> {
     reader: R,
     decryptor: Option<Box<Decryptor + 'static>>,
     read_count: u64,
@@ -333,7 +331,6 @@ impl<R: Reader> RecordReader<R> {
         }
     }
 
-    // this should be called after handshake
     pub fn read_application_data(&mut self) -> TlsResult<Vec<u8>> {
         loop {
             let msg = try!(self.read_message());

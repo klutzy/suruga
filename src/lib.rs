@@ -48,7 +48,7 @@ pub mod handshake;
 
 pub static TLS_VERSION: (u8, u8) = (3, 3);
 
-pub struct Tls<R, W> {
+pub struct Tls<R: Reader, W: Writer> {
     writer: RecordWriter<W>,
     reader: RecordReader<R>,
 
@@ -93,7 +93,7 @@ impl<R: Reader, W: Writer> Tls<R, W> {
 }
 
 // handshake is done during construction.
-pub struct TlsClient<R, W> {
+pub struct TlsClient<R: Reader, W: Writer> {
     tls: Tls<R, W>,
     buf: Vec<u8>,
 }
