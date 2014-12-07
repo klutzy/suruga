@@ -79,6 +79,7 @@ impl EncryptedRecord {
 
 pub struct RecordWriter<W: Writer> {
     writer: W,
+    // if encryptor is None, handshake is not done yet.
     encryptor: Option<Box<Encryptor + 'static>>,
     write_count: u64,
 }
@@ -169,6 +170,9 @@ impl<W: Writer> RecordWriter<W> {
     }
 
     pub fn write_application_data(&mut self, data: &[u8]) -> TlsResult<()> {
+        if self.encryptor.is_none() {
+            panic!("attempted to write ApplicationData before handshake");
+        }
         self.write_data(ApplicationDataTy, data)
     }
 }
@@ -182,6 +186,7 @@ pub enum Message {
 
 pub struct RecordReader<R: Reader> {
     reader: R,
+    // if decryptor is none, handshake is not done yet.
     decryptor: Option<Box<Decryptor + 'static>>,
     read_count: u64,
     handshake_buffer: HandshakeBuffer,
@@ -332,6 +337,9 @@ impl<R: Reader> RecordReader<R> {
     }
 
     pub fn read_application_data(&mut self) -> TlsResult<Vec<u8>> {
+        if self.decryptor.is_none() {
+            panic!("ApplicationData called before handshake");
+        }
         loop {
             let msg = try!(self.read_message());
             match msg {
