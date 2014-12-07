@@ -127,14 +127,14 @@ impl<W: Writer> RecordWriter<W> {
         };
         let fragment_len = enc_record.fragment.len() as u16;
 
-        iotry!(self.writer.write_u8(enc_record.content_type as u8));
+        try!(self.writer.write_u8(enc_record.content_type as u8));
 
         let (major, minor) = TLS_VERSION;
-        iotry!(self.writer.write_u8(major));
-        iotry!(self.writer.write_u8(minor));
+        try!(self.writer.write_u8(major));
+        try!(self.writer.write_u8(minor));
 
-        iotry!(self.writer.write_be_u16(fragment_len));
-        iotry!(self.writer.write(enc_record.fragment.as_slice()));
+        try!(self.writer.write_be_u16(fragment_len));
+        try!(self.writer.write(enc_record.fragment.as_slice()));
 
         self.write_count += 1;
 
@@ -208,7 +208,7 @@ impl<R: Reader> RecordReader<R> {
     }
 
     fn read_record(&mut self) -> TlsResult<Record> {
-        let ty = iotry!(self.reader.read_u8());
+        let ty = try!(self.reader.read_u8());
         let ty = {
             let ct: Option<ContentType> = FromPrimitive::from_u8(ty);
             match ct {
@@ -217,18 +217,18 @@ impl<R: Reader> RecordReader<R> {
             }
         };
 
-        let major = iotry!(self.reader.read_u8());
-        let minor = iotry!(self.reader.read_u8());
+        let major = try!(self.reader.read_u8());
+        let minor = try!(self.reader.read_u8());
 
         let len = {
-            let len = iotry!(self.reader.read_be_u16()) as uint;
+            let len = try!(self.reader.read_be_u16()) as uint;
             if len > ENC_RECORD_MAX_LEN {
                 return tls_err!(RecordOverflow, "TLSEncryptedText too long: {}", len);
             }
             len
         };
 
-        let fragment = iotry!(self.reader.read_exact(len as uint));
+        let fragment = try!(self.reader.read_exact(len as uint));
         let enc_record = EncryptedRecord::new(ty, major, minor, fragment);
 
         let record = match self.decryptor {

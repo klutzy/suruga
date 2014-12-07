@@ -75,8 +75,8 @@ macro_rules! cipher_suite(
             fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
                 $(
                     if *self == CipherSuite::$id {
-                        iotry!(writer.write_u8($v1));
-                        iotry!(writer.write_u8($v2));
+                        try!(writer.write_u8($v1));
+                        try!(writer.write_u8($v2));
                         return Ok(());
                     }
                 )+
@@ -85,8 +85,8 @@ macro_rules! cipher_suite(
             }
 
             fn tls_read<R: Reader>(reader: &mut R) -> TlsResult<CipherSuite> {
-                let id1 = iotry!(reader.read_u8());
-                let id2 = iotry!(reader.read_u8());
+                let id1 = try!(reader.read_u8());
+                let id2 = try!(reader.read_u8());
                 $(
                     if id1 == $v1 && id2 == $v2 {
                         return Ok(CipherSuite::$id);

@@ -216,12 +216,12 @@ macro_rules! tls_array(
         impl TlsItem for $name {
             fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
                 let $name(ref data) = *self;
-                iotry!(writer.write(data.as_slice()));
+                try!(writer.write(data.as_slice()));
                 Ok(())
             }
 
             fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
-                let data = iotry!(reader.read_exact($n));
+                let data = try!(reader.read_exact($n));
                 Ok($name(data))
             }
 
@@ -428,12 +428,12 @@ pub struct ObscureData(Vec<u8>);
 
 impl TlsItem for ObscureData {
     fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
-        iotry!(writer.write(self.as_slice()));
+        try!(writer.write(self.as_slice()));
         Ok(())
     }
 
     fn tls_read<R: Reader>(reader: &mut R) -> TlsResult<ObscureData> {
-        let data = iotry!(reader.read_to_end());
+        let data = try!(reader.read_to_end());
         Ok(ObscureData(data))
     }
 

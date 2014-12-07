@@ -115,12 +115,12 @@ macro_rules! tls_handshake(
                 match *self {
                     $(
                         Handshake::$name(ref body) => {
-                            iotry!(writer.write_u8(tt_to_expr!($num)));
+                            try!(writer.write_u8(tt_to_expr!($num)));
 
                             let len = body.tls_size();
-                            iotry!(writer.write_u8((len >> 16) as u8));
-                            iotry!(writer.write_u8((len >> 8) as u8));
-                            iotry!(writer.write_u8(len as u8));
+                            try!(writer.write_u8((len >> 16) as u8));
+                            try!(writer.write_u8((len >> 8) as u8));
+                            try!(writer.write_u8(len as u8));
 
                             try!(body.tls_write(writer));
                         }
@@ -131,13 +131,13 @@ macro_rules! tls_handshake(
             }
 
             fn tls_read<R: Reader>(reader: &mut R) -> TlsResult<Handshake> {
-                let ty = iotry!(reader.read_u8());
+                let ty = try!(reader.read_u8());
 
                 // HandshakeBuffer already checked validity of length
                 let _len = {
-                    let n1 = iotry!(reader.read_u8()) as u32;
-                    let n2 = iotry!(reader.read_u8()) as u32;
-                    let n3 = iotry!(reader.read_u8()) as u32;
+                    let n1 = try!(reader.read_u8()) as u32;
+                    let n2 = try!(reader.read_u8()) as u32;
+                    let n3 = try!(reader.read_u8()) as u32;
                     (n1 << 16) | (n2 << 8) | n3
                 };
 

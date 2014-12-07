@@ -192,7 +192,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                 // ideally we may save "raw" packet data..
                 let mut serv_msgs = Vec::new();
                 // FIXME: this should not throw "io error".. should throw "internal error"
-                iotry!(serv_msgs.write(msgs.as_slice()));
+                try!(serv_msgs.write(msgs.as_slice()));
                 try!(finished.tls_write(&mut serv_msgs));
 
                 let verify_hash = sha256(serv_msgs.as_slice());
