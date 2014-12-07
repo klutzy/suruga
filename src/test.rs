@@ -1,7 +1,7 @@
 use std::io::{MemReader, ByRefReader, ByRefWriter};
 use std::rand::OsRng;
 
-use super::Tls;
+use tls::Tls;
 use tls_result::TlsResult;
 use cipher::{Encryptor, Decryptor};
 use record::Message::{ApplicationDataMessage, ChangeCipherSpecMessage};

@@ -5,7 +5,7 @@ use handshake::{Handshake, HandshakeBuffer};
 use util::u64_be_array;
 use cipher::{Encryptor, Decryptor};
 use tls_item::TlsItem;
-use super::TLS_VERSION;
+use tls::TLS_VERSION;
 
 use self::ContentType::{ChangeCipherSpecTy, AlertTy, HandshakeTy, ApplicationDataTy};
 use self::Message::{HandshakeMessage, ChangeCipherSpecMessage, AlertMessage,

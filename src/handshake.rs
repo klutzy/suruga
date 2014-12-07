@@ -1,5 +1,6 @@
 use std::io::MemReader;
 
+use tls::TLS_VERSION;
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{InternalError, UnexpectedMessage};
 use tls_item::{TlsItem, DummyItem, ObscureData};
@@ -283,7 +284,7 @@ impl Handshake {
                             extensions: Vec<Extension>) -> TlsResult<Handshake> {
         let client_hello_body = {
             let client_version = {
-                let (major, minor) = super::TLS_VERSION;
+                let (major, minor) = TLS_VERSION;
 
                 ProtocolVersion {
                     major: major,
