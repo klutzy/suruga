@@ -5,7 +5,7 @@ use tls_item::TlsItem;
 tls_enum!(u8 enum AlertLevel {
     warning(1),
     fatal(2)
-})
+});
 
 // A.3. Alert Messages
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
@@ -41,7 +41,7 @@ tls_enum!(u8 #[deriving(Show)] enum AlertDescription {
     // unrecognized_name(112),
     // bad_certificate_status_response(113),
     // bad_certificate_hash_value(114),
-})
+});
 
 impl AlertDescription {
     fn from_err(kind: TlsErrorKind) -> AlertDescription {
@@ -65,7 +65,7 @@ impl AlertDescription {
 tls_struct!(struct Alert {
     level: AlertLevel,
     description: AlertDescription
-})
+});
 
 impl Alert {
     pub fn new(level: AlertLevel, desc: AlertDescription) -> TlsResult<Alert> {

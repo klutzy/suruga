@@ -1,8 +1,7 @@
 use std::error::{Error, FromError};
 use std::io::IoError;
 
-#[deriving(Show)]
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum TlsErrorKind {
     // corresponds to alert messages
 

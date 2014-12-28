@@ -1,6 +1,6 @@
 // http://cr.yp.to/mac/poly1305-20050329.pdf
 
-macro_rules! choose_impl(
+macro_rules! choose_impl {
     ($s: ident, $t:ty, $($a:expr)+) => (
         impl $s {
             fn choose(flag: $t, a: &$s, b: &$s) -> $s {
@@ -14,7 +14,7 @@ macro_rules! choose_impl(
             }
         }
     )
-)
+}
 
 // radix-2^26 (26 == 130/5)
 // value = v[0] + 2^26 v[1] + 2^52 v[2] + 2^78 v[3] + 2^104 v[4]
@@ -26,18 +26,18 @@ pub struct Int1305 {
 
 pub const ZERO: Int1305 = Int1305 { v: [0, ..5] };
 
-choose_impl!(Int1305, u32, 0 1 2 3 4)
+choose_impl! {Int1305, u32, 0 1 2 3 4}
 
 impl Int1305 {
     // no reduction.
     fn add(&self, b: &Int1305) -> Int1305 {
-        macro_rules! add_digit(
+        macro_rules! add_digit {
             ($a:expr, $b:expr, $c:expr, $($i:expr)+) => ({
                 $(
                     $c[$i] = $a[$i] + $b[$i];
                 )+
             })
-        )
+        }
 
         let mut ret = [0, ..5];
 
@@ -49,12 +49,12 @@ impl Int1305 {
     fn mult(&self, b: &Int1305) -> Int1305 {
         let b5 = [b.v[0] * 5, b.v[1] * 5, b.v[2] * 5, b.v[3] * 5, b.v[4] * 5];
 
-        macro_rules! m(
+        macro_rules! m {
             ($i:expr, $j:expr) => ((self.v[$i] as u64) * (b.v[$j] as u64))
-        )
-        macro_rules! m5(
+        }
+        macro_rules! m5 {
             ($i:expr, $j:expr) => ((self.v[$i] as u64) * (b5[$j] as u64))
-        )
+        }
 
         let mut v: [u64, ..5] = [
             m!(0, 0) + m5!(1, 4) + m5!(2, 3) + m5!(3, 2) + m5!(4, 1),
@@ -68,13 +68,13 @@ impl Int1305 {
 
         let mut carry = 0;
 
-        macro_rules! reduce_digit(
+        macro_rules! reduce_digit {
             ($i:expr) => ({
                 v[$i] += carry;
                 carry = v[$i] >> 26;
                 v[$i] &= (1 << 26) - 1;
             })
-        )
+        }
 
         reduce_digit!(0); // carry <= 25 * (2^26 - 1)
         reduce_digit!(1); // again, carry <= 25 * (2^26 - 1)
@@ -126,21 +126,21 @@ impl Int1305 {
     }
 
     fn from_bytes(msg: &[u8, ..16]) -> Int1305 {
-        macro_rules! b4(
+        macro_rules! b4 {
             ($i:expr, $n:expr) => (
                 ((msg[$i] as u32) >> $n) |
                 ((msg[$i+1] as u32) << (8 - $n)) |
                 ((msg[$i+2] as u32) << (16 - $n)) |
                 (((msg[$i+3] as u32) & ((1 << (2 + $n)) - 1)) << (24 - $n))
             )
-        )
-        macro_rules! b3(
+        }
+        macro_rules! b3 {
             ($i:expr, $n:expr) => (
                 ((msg[$i] as u32) >> $n) |
                 ((msg[$i+1] as u32) << (8 - $n)) |
                 ((msg[$i+2] as u32) << (16 - $n))
             )
-        )
+        }
 
         let v = [
             b4!(0, 0),
@@ -172,7 +172,7 @@ impl Int1305 {
         let mut ret_b = Int1305 { v: [0, ..5] };
         let mut carry = 0;
 
-        macro_rules! add_digit(
+        macro_rules! add_digit {
             ($($i:expr)+) => ({
                 $(
                     let v = (self.v[$i] as u64) + P5[$i] + carry;
@@ -180,8 +180,8 @@ impl Int1305 {
                     ret_b.v[$i] = (v & ((1 << 26) - 1)) as u32;
                 )+
             })
-        )
-        add_digit!(0 1 2 3)
+        }
+        add_digit! {0 1 2 3}
         ret_b.v[4] = ((self.v[4] as u64) + P5[4] + carry) as u32;
 
         let is_case_b = ret_b.v[4] >> 31;
@@ -227,14 +227,14 @@ pub fn authenticate(msg: &[u8], r: &[u8, ..16], aes: &[u8, ..16]) -> [u8, ..16] 
 
     let h = h.normalize();
     let h = {
-        macro_rules! b(
+        macro_rules! b {
             ($i:expr, $n:expr) => (
                 (h.v[$i] >> $n) as u8
             );
             ($i:expr, $n:expr, $m:expr) => (
                 ((h.v[$i] >> $n) | (h.v[$i+1] & ((1 << $m) - 1)) << (8 - $m)) as u8
             );
-        )
+        }
 
         [
             b!(0, 0 + 0),
@@ -265,12 +265,12 @@ pub fn authenticate(msg: &[u8], r: &[u8, ..16], aes: &[u8, ..16]) -> [u8, ..16] 
     let ret = {
         let mut ret = [0, ..16];
 
-        macro_rules! to_u32(
+        macro_rules! to_u32 {
             ($a:expr, $i:expr) => (
                 ($a[$i] as u32) | ($a[$i + 1] as u32) << 8 |
                 ($a[$i + 2] as u32) << 16 | ($a[$i + 3] as u32) << 24
             )
-        )
+        }
 
         let h32 = [to_u32!(h, 0), to_u32!(h, 4), to_u32!(h, 8), to_u32!(h, 12)];
         let aes32 = [to_u32!(aes, 0), to_u32!(aes, 4), to_u32!(aes, 8), to_u32!(aes, 12)];
@@ -292,14 +292,14 @@ pub fn authenticate(msg: &[u8], r: &[u8, ..16], aes: &[u8, ..16]) -> [u8, ..16] 
         let sum = (h32[3] as u64) + (aes32[3] as u64) + carry;
         let ret3 = sum as u32;
 
-        macro_rules! to_u8(
+        macro_rules! to_u8 {
             ($a:expr, $r:expr, $i:expr) => ({
                 $a[$i] = $r as u8;
                 $a[$i+1] = ($r >> 8) as u8;
                 $a[$i+2] = ($r >> 16) as u8;
                 $a[$i+3] = ($r >> 24) as u8;
             })
-        )
+        }
 
         to_u8!(ret, ret0, 0);
         to_u8!(ret, ret1, 4);

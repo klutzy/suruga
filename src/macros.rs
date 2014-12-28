@@ -1,28 +1,28 @@
 #![macro_escape]
 
 #[cfg(not(debug))]
-macro_rules! tls_err(
+macro_rules! tls_err {
     ($kind:expr, $e:expr $($args:tt)*) => (
         ::tls_result::TlsError::new($kind, format!($e $($args)*))
     )
-)
+}
 
 #[cfg(debug)]
-macro_rules! tls_err(
+macro_rules! tls_err {
     ($kind:expr, $e:expr $($args:tt)*) => (
         ::tls_result::TlsError::new($kind, format!($e $($args)*), file!(), line!())
     )
-)
+}
 
-macro_rules! num_size(
+macro_rules! num_size {
     (u8) => (1);
     (u16) => (2);
     (u24) => (3);
     (u32) => (4);
     (u64) => (8);
-)
+}
 
-macro_rules! stry_write_num(
+macro_rules! stry_write_num {
     (u8, $writer:expr, $e:expr) => ({
         try!($writer.write_u8($e as u8));
     });
@@ -43,9 +43,9 @@ macro_rules! stry_write_num(
     (u64, $writer:expr, $e:expr) => ({
         try!($writer.write_be_u64($e as u64));
     });
-)
+}
 
-macro_rules! stry_read_num(
+macro_rules! stry_read_num {
     (u8, $reader:expr) => ({
         try!($reader.read_u8())
     });
@@ -64,11 +64,11 @@ macro_rules! stry_read_num(
     (u64, $reader:expr) => ({
         try!($reader.read_be_u64())
     });
-)
+}
 
-macro_rules! tt_to_expr(
+macro_rules! tt_to_expr {
     ($num:expr) => ($num)
-)
-macro_rules! tt_to_pat(
+}
+macro_rules! tt_to_pat {
     ($num:pat) => ($num)
-)
+}

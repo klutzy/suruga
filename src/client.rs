@@ -38,14 +38,14 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
     // this does not send alert when error occurs
     fn handshake(&mut self) -> TlsResult<()> {
         // expect specific HandshakeMessage. otherwise return Err
-        macro_rules! expect(
+        macro_rules! expect {
             ($var:ident) => ({
                 match try!(self.tls.reader.read_handshake()) {
                     handshake::Handshake::$var(data) => data,
                     _ => return tls_err!(UnexpectedMessage, "unexpected handshake message found"),
                 }
             })
-        )
+        }
 
         let cli_random = {
             let mut random_bytes = Vec::from_elem(32, 0u8);

@@ -2,7 +2,7 @@
 // http://cr.yp.to/chacha.html
 
 // convert $e.slice($i, $i + 4) into u32
-macro_rules! to_le_u32(
+macro_rules! to_le_u32 {
     ($e:ident[$i:expr]) => ({
         let i: uint = $i;
         let v1 = $e[i + 0] as u32;
@@ -11,7 +11,7 @@ macro_rules! to_le_u32(
         let v4 = $e[i + 3] as u32;
         v1 | (v2 << 8) | (v3 << 16) | (v4 << 24)
     })
-)
+}
 
 pub struct ChaCha20 {
     // SECRET
@@ -50,15 +50,15 @@ impl ChaCha20 {
 
     fn round20(&self) -> [u32, ..16] {
         // $e must be > 0 and < 32
-        macro_rules! rot(
+        macro_rules! rot {
             ($a:expr, $e:expr) => ({
                 let a: u32 = $a;
                 let e: uint = $e;
                 (a << e) | (a >> (32 - e))
             })
-        )
+        }
 
-        macro_rules! quarter_round(
+        macro_rules! quarter_round {
             ($a:expr, $b:expr, $c:expr, $d:expr) => ({
                 $a += $b;
                 $d ^= $a;
@@ -76,27 +76,27 @@ impl ChaCha20 {
                 $b ^= $c;
                 $b = rot!($b, 7);
             })
-        )
+        }
 
-        macro_rules! quarter_round_idx(
+        macro_rules! quarter_round_idx {
             ($e:expr, $a:expr, $b:expr, $c:expr, $d:expr) => (
                 quarter_round!($e[$a], $e[$b], $e[$c], $e[$d])
             )
-        )
+        }
 
         let mut vals = self.vals;
         for _ in range(0u, 10) {
             // column round
-            quarter_round_idx!(vals, 0, 4, 8, 12)
-            quarter_round_idx!(vals, 1, 5, 9, 13)
-            quarter_round_idx!(vals, 2, 6, 10, 14)
-            quarter_round_idx!(vals, 3, 7, 11, 15)
+            quarter_round_idx!(vals, 0, 4, 8, 12);
+            quarter_round_idx!(vals, 1, 5, 9, 13);
+            quarter_round_idx!(vals, 2, 6, 10, 14);
+            quarter_round_idx!(vals, 3, 7, 11, 15);
 
             // diagonal round
-            quarter_round_idx!(vals, 0, 5, 10, 15)
-            quarter_round_idx!(vals, 1, 6, 11, 12)
-            quarter_round_idx!(vals, 2, 7, 8, 13)
-            quarter_round_idx!(vals, 3, 4, 9, 14)
+            quarter_round_idx!(vals, 0, 5, 10, 15);
+            quarter_round_idx!(vals, 1, 6, 11, 12);
+            quarter_round_idx!(vals, 2, 7, 8, 13);
+            quarter_round_idx!(vals, 3, 4, 9, 14);
         }
 
         for i in range(0u, 16) {

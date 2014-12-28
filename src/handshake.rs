@@ -9,21 +9,21 @@ use cipher::CipherSuite;
 
 // This is actually `struct { gmt_unix_time: u32, random_bytes: [u8, ..28] }`
 // cf: http://tools.ietf.org/html/draft-mathewson-no-gmtunixtime-00
-tls_array!(Random = [u8, ..32])
+tls_array!(Random = [u8, ..32]);
 
-tls_vec!(CipherSuiteVec = CipherSuite(2 .. (1 << 16) - 2))
+tls_vec!(CipherSuiteVec = CipherSuite(2 ... (1 << 16) - 2));
 
 tls_enum!(u8 enum CompressionMethod {
     null(0),
     DEFLATE(1) // RFC 3749
-})
-tls_vec!(CompressionMethodVec = CompressionMethod(1 .. (1 << 8) - 1))
+});
+tls_vec!(CompressionMethodVec = CompressionMethod(1 ... (1 << 8) - 1));
 
-tls_struct!(struct ProtocolVersion { major: u8, minor: u8 })
+tls_struct!(struct ProtocolVersion { major: u8, minor: u8 });
 
-tls_vec!(SessionId = u8(0..32))
+tls_vec!(SessionId = u8(0 ... 32));
 
-tls_vec!(Asn1Cert = u8(1 .. (1 << 24) - 1))
+tls_vec!(Asn1Cert = u8(1 ... (1 << 24) - 1));
 
 // RFC 4492
 
@@ -39,14 +39,14 @@ tls_enum!(u16 enum NamedCurve {
     secp521r1 (25),
     arbitrary_explicit_prime_curves(0xFF01),
     arbitrary_explicit_char2_curves(0xFF02)
-})
-tls_vec!(EllipticCurveList = NamedCurve(1 ..(1 << 16) - 1))
+});
+tls_vec!(EllipticCurveList = NamedCurve(1 ... (1 << 16) - 1));
 
 tls_enum!(u8 enum ECPointFormat {
     uncompressed (0), ansiX962_compressed_prime (1),
     ansiX962_compressed_char2 (2)
-})
-tls_vec!(ECPointFormatList = ECPointFormat(1 .. (1 << 8) - 1))
+});
+tls_vec!(ECPointFormatList = ECPointFormat(1 ... (1 << 8) - 1));
 
 // FIXME: Extension has the following structure:
 // struct Extension {
@@ -56,8 +56,8 @@ tls_vec!(ECPointFormatList = ECPointFormat(1 .. (1 << 8) - 1))
 // and actual structure of `extension_data` depends on `extension_type`.
 // Note that this is not exactly what `tls_enum_struct` wants!
 // It's why we define horrible structs here.
-tls_vec!(EllipticCurveListList = EllipticCurveList(1 ..(1 << 16) - 1))
-tls_vec!(ECPointFormatListList = ECPointFormatList(1 .. (1 << 16) - 1))
+tls_vec!(EllipticCurveListList = EllipticCurveList(1 ... (1 << 16) - 1));
+tls_vec!(ECPointFormatListList = ECPointFormatList(1 ... (1 << 16) - 1));
 
 tls_enum_struct!(u16 enum Extension {
     // RFC 6066
@@ -72,7 +72,7 @@ tls_enum_struct!(u16 enum Extension {
     ec_point_formats(ECPointFormatListList) = 11
     // RFC 5246
     //signature_algorithms(13)
-})
+});
 impl Extension {
     pub fn new_elliptic_curve_list(list: Vec<NamedCurve>) -> TlsResult<Extension> {
         let list = try!(EllipticCurveList::new(list));
@@ -89,8 +89,8 @@ impl Extension {
     }
 }
 
-tls_vec!(ExtensionVec = Extension(0 .. (1 << 16) - 1))
-tls_option!(ExtensionVec)
+tls_vec!(ExtensionVec = Extension(0 ... (1 << 16) - 1));
+tls_option!(ExtensionVec);
 
 // struct Handshake {
 //     msg_type: u8,
@@ -173,7 +173,7 @@ macro_rules! tls_handshake(
             }
         }
     )
-)
+);
 
 tls_handshake!(
     hello_request(DummyItem) = 0,
@@ -188,7 +188,7 @@ tls_handshake!(
     // certificate_verify = 15,
     client_key_exchange(ObscureData) = 16,
     finished(VerifyData) = 20,
-)
+);
 
 tls_struct!(struct ClientHello {
     client_version: ProtocolVersion,
@@ -197,7 +197,7 @@ tls_struct!(struct ClientHello {
     cipher_suites: CipherSuiteVec,
     compression_methods: CompressionMethodVec,
     extensions: Option<ExtensionVec>
-})
+});
 
 tls_struct!(struct ServerHello {
     server_version: ProtocolVersion,
@@ -206,28 +206,28 @@ tls_struct!(struct ServerHello {
     cipher_suite: CipherSuite,
     compression_method: CompressionMethod,
     extensions: Option<ExtensionVec>
-})
+});
 
-tls_vec!(CertificateList = Asn1Cert(0 .. (1 << 24) - 1))
+tls_vec!(CertificateList = Asn1Cert(0 ... (1 << 24) - 1));
 
 tls_enum!(u8 enum ClientCertificateType {
       rsa_sign(1), dss_sign(2), rsa_fixed_dh(3), dss_fixed_dh(4),
       rsa_ephemeral_dh_RESERVED(5), dss_ephemeral_dh_RESERVED(6),
       fortezza_dms_RESERVED(20)
-})
-tls_vec!(CertificiateTypeVec = ClientCertificateType(1 .. (1 << 8) - 1))
+});
+tls_vec!(CertificiateTypeVec = ClientCertificateType(1 ... (1 << 8) - 1));
 
-tls_vec!(DistinguishedName = u8(1 .. (1 << 16) - 1))
-tls_vec!(DistinguishedNameVec = DistinguishedName(0 .. (1 << 16) - 1))
+tls_vec!(DistinguishedName = u8(1 ... (1 << 16) - 1));
+tls_vec!(DistinguishedNameVec = DistinguishedName(0 ... (1 << 16) - 1));
 
 tls_struct!(struct CertificateRequest {
     certificate_types: CertificiateTypeVec,
     supported_signature_algorithms: SignatureAndHashAlgorithmVec,
     certificate_authorities: DistinguishedNameVec
-})
+});
 
 // FIXME TLS 1.2 says the length can be longer for future ciphe suites.
-tls_array!(VerifyData = [u8, ..12])
+tls_array!(VerifyData = [u8, ..12]);
 
 // buffer for handshake protocol
 pub struct HandshakeBuffer {

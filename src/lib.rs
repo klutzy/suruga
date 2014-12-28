@@ -1,6 +1,7 @@
 #![feature(macro_rules, phase, slicing_syntax)]
 #![crate_type = "lib"]
 #![crate_name = "suruga"]
+#![allow(missing_copy_implementations)]
 
 #[phase(link, plugin)]
 extern crate log;

@@ -8,7 +8,7 @@ pub trait TlsItem {
     fn tls_size(&self) -> u64;
 }
 
-macro_rules! tls_primitive(
+macro_rules! tls_primitive {
     ($t:ident) => (
         impl TlsItem for $t {
             fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
@@ -24,13 +24,13 @@ macro_rules! tls_primitive(
             fn tls_size(&self) -> u64 { num_size!($t) }
         }
     )
-)
+}
 
-tls_primitive!(u8)
-tls_primitive!(u16)
-tls_primitive!(u32)
+tls_primitive!(u8);
+tls_primitive!(u16);
+tls_primitive!(u32);
 
-macro_rules! tls_struct(
+macro_rules! tls_struct {
     (
         struct $name:ident {
             $(
@@ -76,9 +76,9 @@ macro_rules! tls_struct(
             }
         }
     )
-)
+}
 
-macro_rules! tls_enum(
+macro_rules! tls_enum {
     (
         $repr_ty:ident
         $(#[$a:meta])*
@@ -89,7 +89,7 @@ macro_rules! tls_enum(
         }
     ) => (
         #[allow(non_camel_case_types)]
-        #[deriving(PartialEq, FromPrimitive)]
+        #[deriving(Copy, PartialEq, FromPrimitive)]
         $(#[$a])*
         pub enum $name {
             $(
@@ -118,7 +118,7 @@ macro_rules! tls_enum(
             }
         }
     )
-)
+}
 
 // usage:
 // struct {
@@ -132,7 +132,7 @@ macro_rules! tls_enum(
 //         }
 //     }
 // } Struct;
-macro_rules! tls_enum_struct(
+macro_rules! tls_enum_struct {
     (
         $repr_ty:ident
         $(#[$a:meta])*
@@ -188,10 +188,10 @@ macro_rules! tls_enum_struct(
             }
         }
     )
-)
+}
 
 // fixed-sized u8/opaque array
-macro_rules! tls_array(
+macro_rules! tls_array {
     ($name:ident = [u8, ..$n:expr]) => (
         pub struct $name(Vec<u8>);
 
@@ -230,11 +230,11 @@ macro_rules! tls_array(
             }
         }
     )
-)
+}
 
-macro_rules! tls_vec(
+macro_rules! tls_vec {
     // $item_ty must implement TlsItem
-    ($name:ident =  $item_ty:ident($size_min:expr .. $size_max:expr)) => (
+    ($name:ident = $item_ty:ident($size_min:expr ... $size_max:expr)) => (
         pub struct $name(Vec<$item_ty>);
         impl $name {
             pub fn new(v: Vec<$item_ty>) -> ::tls_result::TlsResult<$name> {
@@ -365,10 +365,10 @@ macro_rules! tls_vec(
             }
         }
     )
-)
+}
 
 // this only works when the item is at the last
-macro_rules! tls_option(
+macro_rules! tls_option {
     ($t:ty) => (
         impl TlsItem for Option<$t> {
             fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
@@ -411,7 +411,7 @@ macro_rules! tls_option(
             }
         }
     )
-)
+}
 
 // for macros
 pub struct DummyItem;

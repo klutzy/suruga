@@ -12,7 +12,7 @@ use self::Message::{HandshakeMessage, ChangeCipherSpecMessage, AlertMessage,
                     ApplicationDataMessage};
 
 #[repr(u8)]
-#[deriving(PartialEq, FromPrimitive, Show)]
+#[deriving(Copy, PartialEq, FromPrimitive, Show)]
 pub enum ContentType {
     ChangeCipherSpecTy = 20,
     AlertTy = 21,

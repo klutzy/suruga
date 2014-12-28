@@ -19,7 +19,7 @@ static K: [u32, ..64] = [
 ];
 
 
-macro_rules! be_u32(
+macro_rules! be_u32 {
     // warning: $e is byte-oriented offset
     ($a:ident[$e:expr]) => ({
         let e = $e;
@@ -30,7 +30,7 @@ macro_rules! be_u32(
         let b3 = a[e + 3] as u32;
         (b0 << 8 * 3) | (b1 << 8 * 2) | (b2 << 8 * 1) | b3
     })
-)
+}
 
 pub fn sha256(msg: &[u8]) -> [u8, ..32] {
     fn rot(a: u32, b: uint) -> u32 {

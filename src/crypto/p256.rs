@@ -7,6 +7,7 @@ use self::int256::{Int256, ZERO, ONE};
 // Point on Y^2 = X^3 - 3 * X + B mod P256 where B is some obscure big number
 // (x, y, z): (X, Y) = (x/z^2, y/z^3) is point of Y^2 = X^3 - 3 * X + c
 // identity (INFTY) is (1, 1, 0)
+#[deriving(Copy)]
 pub struct Point256 {
     x: Int256,
     y: Int256,
@@ -272,6 +273,7 @@ pub mod int256 {
 
     // 2^32-radix: value = v[0] + 2^32 v[1] + ... + 2^124 v[7]
     // value must be < P256
+    #[deriving(Copy)]
     pub struct Int256 {
         pub v: [u32, ..LIMBS]
     }

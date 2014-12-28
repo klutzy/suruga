@@ -35,12 +35,12 @@ pub trait KeyExchange {
     fn compute_keys(&self, data: &[u8], rng: &mut OsRng) -> TlsResult<(Vec<u8>, Vec<u8>)>;
 }
 
-macro_rules! cipher_suite(
+macro_rules! cipher_suite {
     ($(
         $id:ident = $kex:ident $cipher:ident $mac:ident $v1:expr $v2:expr;
     )+) => (
         #[allow(non_camel_case_types)]
-        #[deriving(PartialEq, Show)]
+        #[deriving(Copy, PartialEq, Show)]
         pub enum CipherSuite {
             $(
                 $id,
@@ -101,7 +101,7 @@ macro_rules! cipher_suite(
             }
         }
     )
-)
+}
 
 // TODO RSA/ECDSA signs
 cipher_suite!(
@@ -110,4 +110,4 @@ cipher_suite!(
     EllipticDiffieHellman ChaCha20Poly1305 MAC_SHA256 0xcc 0x13;
     // TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 =
     // EllipticDiffieHellman ChaCha20Poly1305 MAC_SHA256 0xcc 0x14;
-)
+);
