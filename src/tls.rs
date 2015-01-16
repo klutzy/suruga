@@ -2,7 +2,7 @@ use std::rand::OsRng;
 
 use tls_result::{TlsResult, TlsError, TlsErrorKind};
 use record::{RecordWriter, RecordReader};
-use alert::{mod, Alert};
+use alert::{self, Alert};
 
 pub static TLS_VERSION: (u8, u8) = (3, 3);
 

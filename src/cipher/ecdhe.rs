@@ -9,13 +9,13 @@ use handshake::NamedCurve;
 use signature::DigitallySigned;
 use super::KeyExchange;
 
-tls_vec!(EcData = u8(1 ... (1 << 8) - 1));
+tls_vec!(EcData = u8(1, (1 << 8) - 1));
 tls_struct!(struct EcCurve {
     a: EcData,
     b: EcData
 });
 
-tls_enum_struct!(u8 enum EcParameters {
+tls_enum_struct!(u8, enum EcParameters {
     // explicit_prime(...) = 1,
     // explicit_char2(...) = 2,
     named_curve(NamedCurve) = 3

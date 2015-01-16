@@ -1,3 +1,5 @@
+use std::num::FromPrimitive;
+
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{UnexpectedMessage, RecordOverflow, BadRecordMac, AlertReceived};
 use alert::Alert;
@@ -12,7 +14,7 @@ use self::Message::{HandshakeMessage, ChangeCipherSpecMessage, AlertMessage,
                     ApplicationDataMessage};
 
 #[repr(u8)]
-#[deriving(Copy, PartialEq, FromPrimitive, Show)]
+#[derive(Copy, PartialEq, FromPrimitive, Show)]
 pub enum ContentType {
     ChangeCipherSpecTy = 20,
     AlertTy = 21,
@@ -22,10 +24,10 @@ pub enum ContentType {
 }
 
 /// maximum length of Record (excluding content_type, version, length fields)
-pub static RECORD_MAX_LEN: uint = 1 << 14;
+pub const RECORD_MAX_LEN: uint = 1 << 14;
 
 /// maximum length of EncryptedRecord (excluding content_type, version, length fields)
-pub static ENC_RECORD_MAX_LEN: uint = (1 << 14) + 2048;
+pub const ENC_RECORD_MAX_LEN: uint = (1 << 14) + 2048;
 
 /// corresponds to `TLSPlaintext` in Section 6.2.1.
 pub struct Record {
@@ -314,7 +316,7 @@ impl<R: Reader> RecordReader<R> {
                             return Ok(AlertMessage(try!(Alert::new(level, desc))));
                         }
                         _ => return tls_err!(UnexpectedMessage,
-                                             "unknown alert: {}",
+                                             "unknown alert: {:?}",
                                              record.fragment),
                     }
                 }
@@ -355,7 +357,7 @@ impl<R: Reader> RecordReader<R> {
     pub fn read_handshake(&mut self) -> TlsResult<Handshake> {
         match try!(self.read_message()) {
             HandshakeMessage(handshake) => Ok(handshake),
-            AlertMessage(alert) => tls_err!(AlertReceived, "alert: {}", alert.description),
+            AlertMessage(alert) => tls_err!(AlertReceived, "alert: {:?}", alert.description),
             _ => tls_err!(UnexpectedMessage, "expected Handshake"),
         }
     }

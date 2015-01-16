@@ -12,11 +12,11 @@ use tls_result::TlsResult;
 use tls_result::TlsErrorKind::BadRecordMac;
 use super::{Encryptor, Decryptor, Aead};
 
-const KEY_LEN: uint = 256 / 8;
-const EXPLICIT_IV_LEN: uint = 0;
-const MAC_LEN: uint = 16;
+const KEY_LEN: usize = 256 / 8;
+const EXPLICIT_IV_LEN: usize = 0;
+const MAC_LEN: usize = 16;
 
-fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8, ..MAC_LEN] {
+fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8; MAC_LEN] {
     let mut msg = Vec::new();
 
     // follow draft-agl-tls-chacha20poly1305-04: data first, length later
@@ -29,11 +29,11 @@ fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8, ..MAC_LEN] 
     push_all_with_len(&mut msg, ad);
     push_all_with_len(&mut msg, encrypted);
 
-    let mut r = [0u8, ..MAC_LEN];
+    let mut r = [0u8; MAC_LEN];
     for i in range(0u, MAC_LEN) {
         r[i] = poly_key[i];
     }
-    let mut k = [0u8, ..MAC_LEN];
+    let mut k = [0u8; MAC_LEN];
     for i in range(0u, MAC_LEN) {
         k[i] = poly_key[MAC_LEN + i];
     }
@@ -94,7 +94,7 @@ impl Decryptor for ChaCha20Poly1305Decryptor {
     }
 
     #[inline(always)]
-    fn mac_len(&self) -> uint {
+    fn mac_len(&self) -> usize {
         MAC_LEN
     }
 }
@@ -103,17 +103,17 @@ pub struct ChaCha20Poly1305;
 
 impl Aead for ChaCha20Poly1305 {
     #[inline(always)]
-    fn key_size(&self) -> uint {
+    fn key_size(&self) -> usize {
         KEY_LEN
     }
 
     #[inline(always)]
-    fn fixed_iv_len(&self) -> uint {
+    fn fixed_iv_len(&self) -> usize {
         EXPLICIT_IV_LEN
     }
 
     #[inline(always)]
-    fn mac_len(&self) -> uint {
+    fn mac_len(&self) -> usize {
         MAC_LEN
     }
 
@@ -122,7 +122,7 @@ impl Aead for ChaCha20Poly1305 {
         let encryptor = ChaCha20Poly1305Encryptor {
             key: key,
         };
-        box encryptor as Box<Encryptor>
+        Box::new(encryptor) as Box<Encryptor>
     }
 
     #[inline(always)]
@@ -130,6 +130,6 @@ impl Aead for ChaCha20Poly1305 {
         let decryptor = ChaCha20Poly1305Decryptor {
             key: key,
         };
-        box decryptor as Box<Decryptor>
+        Box::new(decryptor) as Box<Decryptor>
     }
 }

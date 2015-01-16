@@ -1,5 +1,6 @@
 use std::io::{MemReader, ByRefReader, ByRefWriter};
 use std::rand::OsRng;
+use std::iter::repeat;
 
 use tls::Tls;
 use tls_result::TlsResult;
@@ -22,15 +23,15 @@ impl Decryptor for NullDecryptor {
     fn decrypt(&mut self, _nonce: &[u8], encrypted: &[u8], _ad: &[u8]) -> TlsResult<Vec<u8>> {
         Ok(encrypted.to_vec())
     }
-    fn mac_len(&self) -> uint { 0 }
+    fn mac_len(&self) -> usize { 0 }
 }
 
 fn null_tls<R: Reader, W: Writer>(reader: R, writer: W) -> Tls<R, W> {
     let mut tls = Tls::new(reader, writer, OsRng::new().unwrap());
 
-    let null_encryptor = box NullEncryptor as Box<Encryptor>;
+    let null_encryptor = Box::new(NullEncryptor) as Box<Encryptor>;
     tls.writer.set_encryptor(null_encryptor);
-    let null_decryptor = box NullDecryptor as Box<Decryptor>;
+    let null_decryptor = Box::new(NullDecryptor) as Box<Decryptor>;
     tls.reader.set_decryptor(null_decryptor);
 
     tls
@@ -64,13 +65,13 @@ fn test_change_cipher_spec_message() {
 #[test]
 fn test_application_message() {
     let app_data_len = RECORD_MAX_LEN + 200;
-    let app_data = Vec::from_elem(app_data_len, 1u8);
+    let app_data: Vec<_> = repeat(1u8).take(app_data_len).collect();
 
     let mut writer = Vec::new();
     {
         let mut reader = MemReader::new(Vec::new());
         let mut tls = null_tls(reader.by_ref(), writer.by_ref());
-        tls.writer.write_application_data(app_data.as_slice()).unwrap();
+        tls.writer.write_application_data(&app_data[]).unwrap();
     }
 
     let data = writer;
@@ -82,7 +83,7 @@ fn test_application_message() {
         let msg = tls.reader.read_message().unwrap();
         match msg {
             ApplicationDataMessage(msg) => {
-                assert_eq!(msg, Vec::from_elem(RECORD_MAX_LEN, 1u8));
+                assert_eq!(msg, &[1u8; RECORD_MAX_LEN][]);
             },
             _ => panic!(),
         }
@@ -90,7 +91,7 @@ fn test_application_message() {
         let msg = tls.reader.read_message().unwrap();
         match msg {
             ApplicationDataMessage(msg) => {
-                assert_eq!(msg, Vec::from_elem(200, 1u8));
+                assert_eq!(msg, &[1u8; 200][]);
             },
             _ => panic!(),
         }

@@ -1,14 +1,15 @@
-#![feature(macro_rules, phase, slicing_syntax)]
+#![feature(slicing_syntax)]
 #![crate_type = "lib"]
 #![crate_name = "suruga"]
 #![allow(missing_copy_implementations)]
 
-#[phase(link, plugin)]
+#[macro_use]
 extern crate log;
 
 pub use tls::Tls;
 pub use client::TlsClient;
 
+#[macro_use]
 pub mod macros;
 pub mod util;
 
@@ -21,6 +22,7 @@ pub mod crypto {
 }
 
 pub mod tls_result;
+#[macro_use]
 pub mod tls_item;
 pub mod record;
 

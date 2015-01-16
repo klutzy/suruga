@@ -7,7 +7,7 @@ use self::int256::{Int256, ZERO, ONE};
 // Point on Y^2 = X^3 - 3 * X + B mod P256 where B is some obscure big number
 // (x, y, z): (X, Y) = (x/z^2, y/z^3) is point of Y^2 = X^3 - 3 * X + c
 // identity (INFTY) is (1, 1, 0)
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Point256 {
     x: Int256,
     y: Int256,
@@ -262,8 +262,8 @@ impl NPoint256 {
         // 0x04 || self.x (big endian) || self.y (big endian)
         let mut b = Vec::with_capacity(1 + (256 / 8) * 2);
         b.push(0x04); // uncompressed
-        b.push_all(self.x.to_bytes()[]);
-        b.push_all(self.y.to_bytes()[]);
+        b.push_all(&self.x.to_bytes()[]);
+        b.push_all(&self.y.to_bytes()[]);
         b
     }
 }
@@ -273,9 +273,9 @@ pub mod int256 {
 
     // 2^32-radix: value = v[0] + 2^32 v[1] + ... + 2^124 v[7]
     // value must be < P256
-    #[deriving(Copy)]
+    #[derive(Copy)]
     pub struct Int256 {
-        pub v: [u32, ..LIMBS]
+        pub v: [u32; LIMBS]
     }
 
     // P256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
@@ -283,7 +283,7 @@ pub mod int256 {
         v: [0xffffffff, 0xffffffff, 0xffffffff, 0x00000000,
             0x00000000, 0x00000000, 0x00000001, 0xffffffff]
     };
-    pub const ZERO: Int256 = Int256 { v: [0, ..LIMBS] };
+    pub const ZERO: Int256 = Int256 { v: [0; LIMBS] };
     pub const ONE: Int256 = Int256 { v: [1, 0, 0, 0, 0, 0, 0, 0] };
 
     impl Clone for Int256 {
@@ -311,7 +311,7 @@ pub mod int256 {
         // if flag == 0, returns a
         // if flag == 1, returns b
         pub fn choose(flag: u32, a: &Int256, b: &Int256) -> Int256 {
-            let mut v = [0, ..LIMBS];
+            let mut v = [0; LIMBS];
             for i in range(0u, LIMBS) {
                 v[i] = a.v[i] ^ (flag * (a.v[i] ^ b.v[i]));
             }
@@ -323,7 +323,7 @@ pub mod int256 {
         // carry = if self + b < P256 { 0 } else { 1 }
         // i.e. self + b == value + 2^256 * carry
         fn add_no_reduce(&self, b: &Int256) -> (Int256, u32) {
-            let mut v = Int256 { v: [0u32, ..LIMBS] };
+            let mut v = Int256 { v: [0u32; LIMBS] };
 
             // invariant: carry <= 1
             let mut carry = 0u64;
@@ -341,7 +341,7 @@ pub mod int256 {
         // carry = if self > b { 0 } else { 1 }
         // i.e. self - b == value - 2^256 * carry
         fn sub_no_reduce(&self, b: &Int256) -> (Int256, u32) {
-            let mut v = Int256 { v: [0u32, ..LIMBS] };
+            let mut v = Int256 { v: [0u32; LIMBS] };
 
             // invariant: carry_sub <= 1
             let mut carry_sub = 0u64;
@@ -386,7 +386,7 @@ pub mod int256 {
         }
 
         pub fn mult(&self, b: &Int256) -> Int256 {
-            let mut w = [0u64, ..LIMBS * 2];
+            let mut w = [0u64; LIMBS * 2];
             for i in range(0u, LIMBS) {
                 for j in range(0u, LIMBS) {
                     let ij = i + j;
@@ -401,7 +401,7 @@ pub mod int256 {
                 }
             }
 
-            let mut v = [0u32, ..LIMBS * 2];
+            let mut v = [0u32; LIMBS * 2];
             let mut carry = 0u64;
             for i in range(0u, LIMBS * 2) {
                 let a = w[i] + carry;
@@ -570,7 +570,7 @@ pub mod int256 {
 
         // big-endian.
         pub fn to_bytes(&self) -> Vec<u8> {
-            let mut b = Vec::from_elem(256 / 8, 0u8);
+            let mut b = [0u8; 256 / 8];
             for i in range(0u, LIMBS) {
                 let vi = self.v[LIMBS - 1 - i];
                 for j in range(0u, 4) {
@@ -578,7 +578,7 @@ pub mod int256 {
                 }
             }
 
-            b
+            b.to_vec()
         }
 
         // big-endian.
@@ -591,7 +591,7 @@ pub mod int256 {
             for i in range(0u, LIMBS) {
                 let mut vi = 0u32;
                 for j in range(0u, 4) {
-                    vi |= b[i * 4 + j] as u32 << ((3 - j) * 8);
+                    vi |= (b[i * 4 + j] as u32) << ((3 - j) * 8);
                 }
                 x.v[LIMBS - 1 - i] = vi;
             }
@@ -621,11 +621,11 @@ pub mod int256 {
             ZERO,
             ONE,
             Int256 { v: [2, 0, 0, 0, 0, 0, 0, 0] },
-            Int256 { v: [1, ..8] },
+            Int256 { v: [1; 8] },
             Int256 { v: [0, 2, 0, 2, 0, 0, 0, 0] },
             Int256 { v: [1, 2, 3, 4, 5, 6, 7, 8] },
             Int256 { v: [0x0, 0x0, 0x0, 0x0, 0xffffffff, 0xffffffff, 0, 0xffffffff] },
-            Int256 { v: [0xfffffffe, ..8] },
+            Int256 { v: [0xfffffffe; 8] },
         ];
 
         #[test]
@@ -766,7 +766,7 @@ pub mod int256 {
         fn test_from_bytes() {
             for a in VALUES_256.iter() {
                 let b = a.to_bytes();
-                let aa = Int256::from_bytes(b[]).expect("to_bytes failed");
+                let aa = Int256::from_bytes(&b[]).expect("to_bytes failed");
                 assert_eq!(*a, aa);
             }
         }

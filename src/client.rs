@@ -7,11 +7,11 @@ use std::rand::{Rng, OsRng};
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{UnexpectedMessage, InternalError, DecryptError, IllegalParameter};
 use util::crypto_compare;
-use cipher::{mod, Aead};
+use cipher::{self, Aead};
 use cipher::prf::Prf;
 use crypto::sha2::sha256;
 use tls_item::{TlsItem, DummyItem};
-use handshake::{mod, Handshake};
+use handshake::{self, Handshake};
 use tls::{Tls, TLS_VERSION};
 
 // handshake is done during construction.
@@ -48,9 +48,9 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         }
 
         let cli_random = {
-            let mut random_bytes = Vec::from_elem(32, 0u8);
-            self.tls.rng.fill_bytes(random_bytes.as_mut_slice());
-            random_bytes
+            let mut random_bytes = [0u8; 32];
+            self.tls.rng.fill_bytes(&mut random_bytes);
+            random_bytes.to_vec()
         };
         let random = try!(handshake::Random::new(cli_random.clone()));
 
@@ -81,7 +81,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
 
             if server_hello_data.cipher_suite != cipher_suite {
                 return tls_err!(IllegalParameter,
-                                "cipher suite mismatch: found {}",
+                                "cipher suite mismatch: found {:?}",
                                 server_hello_data.cipher_suite);
             }
 
@@ -257,8 +257,8 @@ impl<R: Reader, W: Writer> Writer for TlsClient<R, W> {
 
 impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
     // if ssl connection is failed, return `EndOfFile`.
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        let mut pos = 0u;
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
+        let mut pos = 0us;
         let len = buf.len();
         while pos < len {
             let remaining = len - pos;
@@ -269,12 +269,12 @@ impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
                         break; // FIXME: stop if EOF. otherwise raise error?
                     }
                 };
-                self.buf.push_all(data[]);
+                self.buf.push_all(&data[]);
             }
 
             let selflen = self.buf.len();
             let necessary = cmp::min(remaining, selflen);
-            copy_memory(buf[mut pos .. pos + necessary], self.buf[.. necessary]);
+            copy_memory(&mut buf[pos .. pos + necessary], &self.buf[.. necessary]);
             pos += necessary;
 
             self.buf = self.buf.slice_from(necessary).to_vec();

@@ -21,10 +21,10 @@ macro_rules! choose_impl {
 // lazy normalization: v[i] <= 2^32 - 1
 // http://cr.yp.to/highspeed/neoncrypto-20120320.pdf
 pub struct Int1305 {
-    v: [u32, ..5],
+    v: [u32; 5],
 }
 
-pub const ZERO: Int1305 = Int1305 { v: [0, ..5] };
+pub const ZERO: Int1305 = Int1305 { v: [0; 5] };
 
 choose_impl! {Int1305, u32, 0 1 2 3 4}
 
@@ -39,7 +39,7 @@ impl Int1305 {
             })
         }
 
-        let mut ret = [0, ..5];
+        let mut ret = [0; 5];
 
         add_digit!(self.v, b.v, ret, 0 1 2 3 4);
 
@@ -56,7 +56,7 @@ impl Int1305 {
             ($i:expr, $j:expr) => ((self.v[$i] as u64) * (b5[$j] as u64))
         }
 
-        let mut v: [u64, ..5] = [
+        let mut v: [u64; 5] = [
             m!(0, 0) + m5!(1, 4) + m5!(2, 3) + m5!(3, 2) + m5!(4, 1),
             m!(0, 1) + m!(1, 0) + m5!(2, 4) + m5!(3, 3) + m5!(4, 2),
             m!(0, 2) + m!(1, 1) + m!(2, 0) + m5!(3, 4) + m5!(4, 3),
@@ -125,7 +125,7 @@ impl Int1305 {
         Int1305 { v: [v[0] as u32, v[1] as u32, v[2] as u32, v[3] as u32, v[4] as u32] }
     }
 
-    fn from_bytes(msg: &[u8, ..16]) -> Int1305 {
+    fn from_bytes(msg: &[u8; 16]) -> Int1305 {
         macro_rules! b4 {
             ($i:expr, $n:expr) => (
                 ((msg[$i] as u32) >> $n) |
@@ -167,9 +167,9 @@ impl Int1305 {
         // therefore (a + b + 5) >> 130 == 1 and (a + b - p) == (a + b + 5) & !(1 << 130)
         // here we compute a + b + 5 + (0b111...111 << 130) to eliminate `& !(1 << 130)` part
 
-        static P5: [u64, ..5] = [5, 0, 0, 0, ((1 << 6) - 1) << 26];
+        static P5: [u64; 5] = [5, 0, 0, 0, ((1 << 6) - 1) << 26];
 
-        let mut ret_b = Int1305 { v: [0, ..5] };
+        let mut ret_b = Int1305 { v: [0; 5] };
         let mut carry = 0;
 
         macro_rules! add_digit {
@@ -190,7 +190,7 @@ impl Int1305 {
     }
 }
 
-pub fn authenticate(msg: &[u8], r: &[u8, ..16], aes: &[u8, ..16]) -> [u8, ..16] {
+pub fn authenticate(msg: &[u8], r: &[u8; 16], aes: &[u8; 16]) -> [u8; 16] {
     let mut r = *r;
     r[3] &= 15;
     r[4] &= 252;
@@ -211,7 +211,7 @@ pub fn authenticate(msg: &[u8], r: &[u8, ..16], aes: &[u8, ..16]) -> [u8, ..16] 
     for i in range(0, chunks) {
         // c[i] = sum_i (m[16*i] * 2^8) + 2^128
 
-        let mut m = [0u8, ..16];
+        let mut m = [0u8; 16];
         let m_len = if i < chunks - 1 { 16 } else { len - 16 * i };
         for j in range(0, m_len) {
             m[j] = msg[i * 16 + j];
@@ -263,7 +263,7 @@ pub fn authenticate(msg: &[u8], r: &[u8, ..16], aes: &[u8, ..16]) -> [u8, ..16] 
 
     // h + aes (mod 2^128)
     let ret = {
-        let mut ret = [0, ..16];
+        let mut ret = [0; 16];
 
         macro_rules! to_u32 {
             ($a:expr, $i:expr) => (
@@ -331,9 +331,9 @@ mod test {
         Int1305 { v: [0, 1, 2, 3, 4] },
         Int1305 { v: [5, 6, 7, 8, 9] },
         Int1305 { v: [1 << 23, 3 << 20, 0, 5 << 21, 0] },
-        Int1305 { v: [1 << 20, ..5] },
-        Int1305 { v: [1 << 24, ..5] },
-        Int1305 { v: [(1 << 25) - 1, ..5] },
+        Int1305 { v: [1 << 20; 5] },
+        Int1305 { v: [1 << 24; 5] },
+        Int1305 { v: [(1 << 25) - 1; 5] },
         Int1305 { v: [0x3fffffb - 1, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff] }, // p - 1
     ];
 
@@ -370,13 +370,13 @@ mod test {
     #[test]
     fn test_normalize() {
         let p = Int1305 { v: [0x3fffffb, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff] };
-        assert_eq!(p.normalize().v[], super::ZERO.v[]);
+        assert_eq!(&p.normalize().v[], &super::ZERO.v[]);
 
         let large = Int1305 { v: [0, 10, 5, 10, 1 << 26] };
         let small = Int1305 { v: [5, 10, 5, 10, 0] };
 
-        assert_eq!(large.normalize().v[], small.v[]);
-        assert_eq!(small.normalize().v[], small.v[]);
+        assert_eq!(&large.normalize().v[], &small.v[]);
+        assert_eq!(&small.normalize().v[], &small.v[]);
 
         for a in COEFFS.iter() {
             assert_eq!(a.normalize(), *a);
@@ -404,10 +404,7 @@ mod test {
     #[test]
     fn test_poly1305_examples() {
         // from Appendix B of reference paper
-        static VALUES: &'static [(&'static [u8],
-                                  [u8, ..16],
-                                  [u8, ..16],
-                                  [u8, ..16])] = &[
+        static VALUES: &'static [(&'static [u8], [u8; 16], [u8; 16], [u8; 16])] = &[
             // (msg, r, aes, result)
             (&[0xf3, 0xf6],
              [0x85, 0x1f, 0xc4, 0x0c, 0x34, 0x67, 0xac, 0x0b,
@@ -454,7 +451,7 @@ mod test {
 
         for &(msg, ref r, ref aes, ref expected) in VALUES.iter() {
             let output = super::authenticate(msg, r, aes);
-            assert_eq!(output[], expected[]);
+            assert_eq!(&output[], &expected[]);
         }
     }
 }

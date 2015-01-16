@@ -11,23 +11,23 @@ use cipher::CipherSuite;
 // cf: http://tools.ietf.org/html/draft-mathewson-no-gmtunixtime-00
 tls_array!(Random = [u8, ..32]);
 
-tls_vec!(CipherSuiteVec = CipherSuite(2 ... (1 << 16) - 2));
+tls_vec!(CipherSuiteVec = CipherSuite(2, (1 << 16) - 2));
 
-tls_enum!(u8 enum CompressionMethod {
+tls_enum!(u8, enum CompressionMethod {
     null(0),
     DEFLATE(1) // RFC 3749
 });
-tls_vec!(CompressionMethodVec = CompressionMethod(1 ... (1 << 8) - 1));
+tls_vec!(CompressionMethodVec = CompressionMethod(1, (1 << 8) - 1));
 
 tls_struct!(struct ProtocolVersion { major: u8, minor: u8 });
 
-tls_vec!(SessionId = u8(0 ... 32));
+tls_vec!(SessionId = u8(0, 32));
 
-tls_vec!(Asn1Cert = u8(1 ... (1 << 24) - 1));
+tls_vec!(Asn1Cert = u8(1, (1 << 24) - 1));
 
 // RFC 4492
 
-tls_enum!(u16 enum NamedCurve {
+tls_enum!(u16, enum NamedCurve {
     sect163k1 (1), sect163r1 (2), sect163r2 (3),
     sect193r1 (4), sect193r2 (5), sect233k1 (6),
     sect233r1 (7), sect239k1 (8), sect283k1 (9),
@@ -40,13 +40,13 @@ tls_enum!(u16 enum NamedCurve {
     arbitrary_explicit_prime_curves(0xFF01),
     arbitrary_explicit_char2_curves(0xFF02)
 });
-tls_vec!(EllipticCurveList = NamedCurve(1 ... (1 << 16) - 1));
+tls_vec!(EllipticCurveList = NamedCurve(1, (1 << 16) - 1));
 
-tls_enum!(u8 enum ECPointFormat {
+tls_enum!(u8, enum ECPointFormat {
     uncompressed (0), ansiX962_compressed_prime (1),
     ansiX962_compressed_char2 (2)
 });
-tls_vec!(ECPointFormatList = ECPointFormat(1 ... (1 << 8) - 1));
+tls_vec!(ECPointFormatList = ECPointFormat(1, (1 << 8) - 1));
 
 // FIXME: Extension has the following structure:
 // struct Extension {
@@ -56,10 +56,10 @@ tls_vec!(ECPointFormatList = ECPointFormat(1 ... (1 << 8) - 1));
 // and actual structure of `extension_data` depends on `extension_type`.
 // Note that this is not exactly what `tls_enum_struct` wants!
 // It's why we define horrible structs here.
-tls_vec!(EllipticCurveListList = EllipticCurveList(1 ... (1 << 16) - 1));
-tls_vec!(ECPointFormatListList = ECPointFormatList(1 ... (1 << 16) - 1));
+tls_vec!(EllipticCurveListList = EllipticCurveList(1, (1 << 16) - 1));
+tls_vec!(ECPointFormatListList = ECPointFormatList(1, (1 << 16) - 1));
 
-tls_enum_struct!(u16 enum Extension {
+tls_enum_struct!(u16, enum Extension {
     // RFC 6066
     //server_name(0),
     //max_fragment_length(1),
@@ -89,7 +89,7 @@ impl Extension {
     }
 }
 
-tls_vec!(ExtensionVec = Extension(0 ... (1 << 16) - 1));
+tls_vec!(ExtensionVec = Extension(0, (1 << 16) - 1));
 tls_option!(ExtensionVec);
 
 // struct Handshake {
@@ -208,17 +208,17 @@ tls_struct!(struct ServerHello {
     extensions: Option<ExtensionVec>
 });
 
-tls_vec!(CertificateList = Asn1Cert(0 ... (1 << 24) - 1));
+tls_vec!(CertificateList = Asn1Cert(0, (1 << 24) - 1));
 
-tls_enum!(u8 enum ClientCertificateType {
+tls_enum!(u8, enum ClientCertificateType {
       rsa_sign(1), dss_sign(2), rsa_fixed_dh(3), dss_fixed_dh(4),
       rsa_ephemeral_dh_RESERVED(5), dss_ephemeral_dh_RESERVED(6),
       fortezza_dms_RESERVED(20)
 });
-tls_vec!(CertificiateTypeVec = ClientCertificateType(1 ... (1 << 8) - 1));
+tls_vec!(CertificiateTypeVec = ClientCertificateType(1, (1 << 8) - 1));
 
-tls_vec!(DistinguishedName = u8(1 ... (1 << 16) - 1));
-tls_vec!(DistinguishedNameVec = DistinguishedName(0 ... (1 << 16) - 1));
+tls_vec!(DistinguishedName = u8(1, (1 << 16) - 1));
+tls_vec!(DistinguishedNameVec = DistinguishedName(0, (1 << 16) - 1));
 
 tls_struct!(struct CertificateRequest {
     certificate_types: CertificiateTypeVec,
@@ -240,7 +240,7 @@ impl HandshakeBuffer {
     }
 
     pub fn add_record(&mut self, fragment: Vec<u8>) {
-        self.buf.push_all(fragment[]);
+        self.buf.push_all(&fragment[]);
     }
 
     // if message is arrived but has unknown type, the message is discarded and returns error.
@@ -251,10 +251,10 @@ impl HandshakeBuffer {
             return Ok(None);
         }
 
-        let n1 = self.buf[1] as uint;
-        let n2 = self.buf[2] as uint;
-        let n3 = self.buf[3] as uint;
-        let wanted_len: uint = (n1 << 16) | (n2 << 8) | n3;
+        let n1 = self.buf[1] as usize;
+        let n2 = self.buf[2] as usize;
+        let n3 = self.buf[3] as usize;
+        let wanted_len: usize = (n1 << 16) | (n2 << 8) | n3;
         let wanted_len = wanted_len + 4;
 
         if len < wanted_len {
@@ -361,7 +361,7 @@ mod test {
                 };
 
                 let random = {
-                    let random_bytes = Vec::from_elem(32, 0u8);
+                    let random_bytes = [0u8; 32].to_vec();
                     Random::new(random_bytes).unwrap()
                 };
 

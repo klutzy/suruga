@@ -2,12 +2,12 @@
 // not seriously audited.
 // no bit-level support. sorry
 
-const INIT_VAL: [u32, ..8] = [
+const INIT_VAL: [u32; 8] = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
 ];
 
-static K: [u32, ..64] = [
+static K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
     0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -32,8 +32,8 @@ macro_rules! be_u32 {
     })
 }
 
-pub fn sha256(msg: &[u8]) -> [u8, ..32] {
-    fn rot(a: u32, b: uint) -> u32 {
+pub fn sha256(msg: &[u8]) -> [u8; 32] {
+    fn rot(a: u32, b: usize) -> u32 {
         (a >> b) | (a << (32 - b))
     }
 
@@ -61,7 +61,7 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
         let w = {
             let msg = msg.as_slice();
 
-            let mut w = [0u32, ..64];
+            let mut w = [0u32; 64];
             for j in range(0, 16u) {
                 let b0 = msg[i * 64 + j * 4 + 0] as u32;
                 let b1 = msg[i * 64 + j * 4 + 1] as u32;
@@ -122,7 +122,7 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
 
     }
 
-    let mut ret = [0u8, ..32];
+    let mut ret = [0u8; 32];
     for i in range(0, 8u) {
         ret[i * 4 + 0] = (val[i] >> 8 * 3) as u8;
         ret[i * 4 + 1] = (val[i] >> 8 * 2) as u8;

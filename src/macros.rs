@@ -1,16 +1,6 @@
-#![macro_escape]
-
-#[cfg(not(debug))]
 macro_rules! tls_err {
-    ($kind:expr, $e:expr $($args:tt)*) => (
-        ::tls_result::TlsError::new($kind, format!($e $($args)*))
-    )
-}
-
-#[cfg(debug)]
-macro_rules! tls_err {
-    ($kind:expr, $e:expr $($args:tt)*) => (
-        ::tls_result::TlsError::new($kind, format!($e $($args)*), file!(), line!())
+    ($kind:expr, $($args:tt)*) => (
+        $crate::tls_result::TlsError::new($kind, format!($($args)*))
     )
 }
 
