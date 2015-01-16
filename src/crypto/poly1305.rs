@@ -208,12 +208,12 @@ pub fn authenticate(msg: &[u8], r: &[u8; 16], aes: &[u8; 16]) -> [u8; 16] {
 
     let len = msg.len();
     let chunks = (len + 15) / 16;
-    for i in range(0, chunks) {
+    for i in (0..chunks) {
         // c[i] = sum_i (m[16*i] * 2^8) + 2^128
 
         let mut m = [0u8; 16];
         let m_len = if i < chunks - 1 { 16 } else { len - 16 * i };
-        for j in range(0, m_len) {
+        for j in (0..m_len) {
             m[j] = msg[i * 16 + j];
         }
         let mut c = Int1305::from_bytes(&m);

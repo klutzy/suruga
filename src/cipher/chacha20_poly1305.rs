@@ -30,11 +30,11 @@ fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8; MAC_LEN] {
     push_all_with_len(&mut msg, encrypted);
 
     let mut r = [0u8; MAC_LEN];
-    for i in range(0us, MAC_LEN) {
+    for i in (0us..MAC_LEN) {
         r[i] = poly_key[i];
     }
     let mut k = [0u8; MAC_LEN];
-    for i in range(0us, MAC_LEN) {
+    for i in (0us..MAC_LEN) {
         k[i] = poly_key[MAC_LEN + i];
     }
 
@@ -82,7 +82,7 @@ impl Decryptor for ChaCha20Poly1305Decryptor {
         let plain = chacha20.encrypt(encrypted);
 
         let mut diff = 0u8;
-        for i in range(0us, MAC_LEN) {
+        for i in (0us..MAC_LEN) {
             diff |= mac_computed[i] ^ mac_expected[i];
         }
 

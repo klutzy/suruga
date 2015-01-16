@@ -32,7 +32,7 @@ impl ChaCha20 {
         vals[2] = 0x79622d32;
         vals[3] = 0x6b206574;
 
-        for i in range(0us, 8) {
+        for i in (0us..8) {
             vals[4 + i] = to_le_u32!(key[4 * i]);
         }
 
@@ -85,7 +85,7 @@ impl ChaCha20 {
         }
 
         let mut vals = self.vals;
-        for _ in range(0us, 10) {
+        for _ in (0us..10) {
             // column round
             quarter_round_idx!(vals, 0, 4, 8, 12);
             quarter_round_idx!(vals, 1, 5, 9, 13);
@@ -99,7 +99,7 @@ impl ChaCha20 {
             quarter_round_idx!(vals, 3, 4, 9, 14);
         }
 
-        for i in range(0us, 16) {
+        for i in (0us..16) {
             vals[i] += self.vals[i];
         }
 
@@ -120,7 +120,7 @@ impl ChaCha20 {
 
         let next_bytes = {
             let mut next_bytes = [0u8; 64];
-            for i in range(0us, 16) {
+            for i in (0us..16) {
                 next_bytes[4 * i + 0] = next[i] as u8;
                 next_bytes[4 * i + 1] = (next[i] >> 8) as u8;
                 next_bytes[4 * i + 2] = (next[i] >> 16) as u8;
@@ -200,10 +200,10 @@ mod test {
                           \x5d\xdc\x49\x7a\x0b\x46\x6e\x7d\x6b\xbd\xb0\x04\x1b\x2f\x58\x6b";
         check_keystream(&key, &nonce, keystream);
 
-        for i in range(0us, 0x20) {
+        for i in (0us..0x20) {
             key[i] = i as u8;
         }
-        for i in range(0us, 0x08) {
+        for i in (0us..0x08) {
             nonce[i] = i as u8;
         }
         let keystream = b"\xf7\x98\xa1\x89\xf1\x95\xe6\x69\x82\x10\x5f\xfb\x64\x0b\xb7\x75\

@@ -51,7 +51,7 @@ impl KeyExchange for EllipticDiffieHellman {
         fn get_random_x(rng: &mut OsRng) -> p256::int256::Int256 {
             loop {
                 let mut x = p256::int256::ZERO;
-                for i in range(0us, 8) {
+                for i in 0us..8 {
                     x.v[i] = rng.next_u32();
                 }
                 let xx = x.reduce_once(0);
