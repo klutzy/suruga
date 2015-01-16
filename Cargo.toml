@@ -3,3 +3,7 @@
 name = "suruga"
 version = "0.1.0"
 authors = ["klutzytheklutzy@gmail.com"]
+
+[dependencies]
+
+log = "*"
