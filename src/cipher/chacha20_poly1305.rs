@@ -23,7 +23,7 @@ fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8; MAC_LEN] {
     // note that in draft-agl-tls-chacha20poly1305-01 length is first
     fn push_all_with_len(vec: &mut Vec<u8>, data: &[u8]) {
         vec.push_all(data);
-        vec.push_all(u64_le_array(data.len() as u64).as_slice());
+        vec.push_all(&u64_le_array(data.len() as u64)[]);
     }
 
     push_all_with_len(&mut msg, ad);
@@ -38,7 +38,7 @@ fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8; MAC_LEN] {
         k[i] = poly_key[MAC_LEN + i];
     }
 
-    poly1305::authenticate(msg.as_slice(), &r, &k)
+    poly1305::authenticate(&msg[], &r, &k)
 }
 
 struct ChaCha20Poly1305Encryptor {
@@ -47,12 +47,12 @@ struct ChaCha20Poly1305Encryptor {
 
 impl Encryptor for ChaCha20Poly1305Encryptor {
     fn encrypt(&mut self, nonce: &[u8], data: &[u8], ad: &[u8]) -> Vec<u8> {
-        let mut chacha20 = ChaCha20::new(self.key.as_slice(), nonce.as_slice());
+        let mut chacha20 = ChaCha20::new(&self.key[], nonce);
         let poly1305_key = chacha20.next();
 
         let mut encrypted = chacha20.encrypt(data);
-        let mac = compute_mac(poly1305_key.as_slice(), encrypted.as_slice(), ad);
-        encrypted.push_all(mac.as_slice());
+        let mac = compute_mac(&poly1305_key[], &encrypted[], ad);
+        encrypted.push_all(&mac[]);
 
         encrypted
     }
@@ -69,13 +69,13 @@ impl Decryptor for ChaCha20Poly1305Decryptor {
             return tls_err!(BadRecordMac, "message too short");
         }
 
-        let encrypted = data.slice_to(enc_len - MAC_LEN);
-        let mac_expected = data.slice_from(enc_len - MAC_LEN);
+        let encrypted = &data[..(enc_len - MAC_LEN)];
+        let mac_expected = &data[(enc_len - MAC_LEN)..];
 
-        let mut chacha20 = ChaCha20::new(self.key.as_slice(), nonce.as_slice());
+        let mut chacha20 = ChaCha20::new(&self.key[], nonce);
         let poly1305_key = chacha20.next();
 
-        let mac_computed = compute_mac(poly1305_key.as_slice(), encrypted.as_slice(), ad);
+        let mac_computed = compute_mac(&poly1305_key[], &encrypted[], ad);
 
         // SECRET
         // even if `mac_computed != mac_expected`, decrypt the data to prevent timing attack.

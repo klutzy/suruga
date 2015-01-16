@@ -227,8 +227,8 @@ impl NPoint256 {
             return None;
         }
 
-        let x = Int256::from_bytes(data.slice(1, 32 + 1));
-        let y = Int256::from_bytes(data.slice(1 + 32, 1 + 32 * 2));
+        let x = Int256::from_bytes(&data[1..(32 + 1)]);
+        let y = Int256::from_bytes(&data[(1 + 32)..(1 + 32 * 2)]);
 
         let (x, y) = match (x, y) {
             (Some(x), Some(y)) => (x, y),

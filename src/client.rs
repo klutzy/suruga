@@ -101,8 +101,8 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // we always use server key exchange
         let server_key_ex_data = expect!(server_key_exchange);
         let kex = cipher_suite.new_kex();
-        let (key_data, pre_master_secret) = try!(kex.compute_keys(server_key_ex_data.as_slice(),
-                                                                   &mut self.tls.rng));
+        let (key_data, pre_master_secret) = try!(kex.compute_keys(&*server_key_ex_data,
+                                                                  &mut self.tls.rng));
 
         expect!(server_hello_done);
 
@@ -114,10 +114,10 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // SECRET
         let master_secret = {
             let mut label_seed = b"master secret".to_vec();
-            label_seed.push_all(cli_random.as_slice());
-            label_seed.push_all(server_hello_data.random.as_slice());
+            label_seed.push_all(&*cli_random);
+            label_seed.push_all(&*server_hello_data.random);
 
-            let mut prf = Prf::new(pre_master_secret.as_slice(), label_seed.as_slice());
+            let mut prf = Prf::new(&pre_master_secret[], &label_seed[]);
             prf.get_bytes(48)
         };
 
@@ -126,10 +126,10 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // SECRET
         let read_key = {
             let mut label_seed = b"key expansion".to_vec();
-            label_seed.push_all(server_hello_data.random.as_slice());
-            label_seed.push_all(cli_random.as_slice());
+            label_seed.push_all(&*server_hello_data.random);
+            label_seed.push_all(&*cli_random);
 
-            let mut prf = Prf::new(master_secret.as_slice(), label_seed.as_slice());
+            let mut prf = Prf::new(&master_secret[], &label_seed[]);
 
             // mac_key is not used in AEAD configuration.
 
@@ -166,14 +166,14 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // can be broken into several records. This leads to alert attack.
         // since we don't accept strange alerts, all "normal" alert messages are
         // treated as error, so now we can assert that we haven't received alerts.
-        let verify_hash = sha256(msgs.as_slice());
+        let verify_hash = sha256(&msgs[]);
 
         let client_verify_data = {
             let finished_label = b"client finished";
 
             let mut label_seed = finished_label.to_vec();
-            label_seed.push_all(verify_hash.as_slice());
-            let mut prf = Prf::new(master_secret.as_slice(), label_seed.as_slice());
+            label_seed.push_all(&verify_hash[]);
+            let mut prf = Prf::new(&master_secret[], &label_seed[]);
             prf.get_bytes(cipher_suite.verify_data_len())
         };
         let finished = try!(Handshake::new_finished(client_verify_data));
@@ -192,10 +192,10 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                 // ideally we may save "raw" packet data..
                 let mut serv_msgs = Vec::new();
                 // FIXME: this should not throw "io error".. should throw "internal error"
-                try!(serv_msgs.write(msgs.as_slice()));
+                try!(serv_msgs.write(&msgs[]));
                 try!(finished.tls_write(&mut serv_msgs));
 
-                let verify_hash = sha256(serv_msgs.as_slice());
+                let verify_hash = sha256(&serv_msgs[]);
                 verify_hash
             };
 
@@ -203,13 +203,13 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                 let finished_label = b"server finished";
 
                 let mut label_seed = finished_label.to_vec();
-                label_seed.push_all(verify_hash.as_slice());
-                let mut prf = Prf::new(master_secret.as_slice(), label_seed.as_slice());
+                label_seed.push_all(&verify_hash[]);
+                let mut prf = Prf::new(&*master_secret, &label_seed[]);
                 prf.get_bytes(cipher_suite.verify_data_len())
             };
 
-            let verify_ok = crypto_compare(server_finished.as_slice(),
-                                           server_verify_data.as_slice());
+            let verify_ok = crypto_compare(&server_finished[],
+                                           &server_verify_data[]);
             if !verify_ok {
                 return tls_err!(DecryptError, "server sent wrong verify data");
             }
@@ -277,7 +277,7 @@ impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
             copy_memory(&mut buf[pos .. pos + necessary], &self.buf[.. necessary]);
             pos += necessary;
 
-            self.buf = self.buf.slice_from(necessary).to_vec();
+            self.buf = self.buf[necessary..].to_vec();
         }
 
         Ok(pos)

@@ -38,7 +38,7 @@ impl KeyExchange for EllipticDiffieHellman {
         let mut reader = BufReader::new(data);
         let ecdh_params: EcdheServerKeyExchange = try!(TlsItem::tls_read(&mut reader));
 
-        let gy = ecdh_params.params.public.as_slice();
+        let gy = &*ecdh_params.params.public;
         let gy = p256::NPoint256::from_uncompressed_bytes(gy);
         let gy = match gy {
             None => {

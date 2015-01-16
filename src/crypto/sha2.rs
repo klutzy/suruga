@@ -23,11 +23,10 @@ macro_rules! be_u32 {
     // warning: $e is byte-oriented offset
     ($a:ident[$e:expr]) => ({
         let e = $e;
-        let a = $a.as_slice();
-        let b0 = a[e + 0] as u32;
-        let b1 = a[e + 1] as u32;
-        let b2 = a[e + 2] as u32;
-        let b3 = a[e + 3] as u32;
+        let b0 = $a[e + 0] as u32;
+        let b1 = $a[e + 1] as u32;
+        let b2 = $a[e + 2] as u32;
+        let b3 = $a[e + 3] as u32;
         (b0 << 8 * 3) | (b1 << 8 * 2) | (b2 << 8 * 1) | b3
     })
 }
@@ -59,8 +58,6 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
 
     for i in (0..nblk) {
         let w = {
-            let msg = msg.as_slice();
-
             let mut w = [0u32; 64];
             for j in 0..16us {
                 let b0 = msg[i * 64 + j * 4 + 0] as u32;
@@ -152,7 +149,7 @@ mod test {
 
         for &(input, expected) in ANSWERS.iter() {
             let computed = sha256(input);
-            assert_eq!(expected, computed.as_slice());
+            assert_eq!(expected, &computed[]);
         }
     }
 }

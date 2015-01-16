@@ -15,19 +15,15 @@ pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
 
     let mut i_msg = [0x36u8; B].to_vec();
     let mut o_msg = [0x5cu8; B].to_vec();
-    {
-        let i_msg = i_msg.as_mut_slice();
-        let o_msg = o_msg.as_mut_slice();
-        for i in (0us..key.len()) {
-            i_msg[i] ^= key[i];
-            o_msg[i] ^= key[i];
-        }
+    for i in (0us..key.len()) {
+        i_msg[i] ^= key[i];
+        o_msg[i] ^= key[i];
     }
 
     i_msg.push_all(msg);
-    let h_i = sha256(i_msg.as_slice());
-    o_msg.push_all(h_i.as_slice());
-    let h_o = sha256(o_msg.as_slice());
+    let h_i = sha256(&i_msg[]);
+    o_msg.push_all(&h_i[]);
+    let h_o = sha256(&o_msg[]);
 
     h_o
 }
@@ -54,9 +50,9 @@ impl Prf {
     // get 32-byte pseudorandom number.
     fn next_block(&mut self) -> [u8; 32] {
         let mut input = self.a.to_vec();
-        input.push_all(self.seed.as_slice());
-        let next = hmac_sha256(self.secret.as_slice(), input.as_slice());
-        self.a = hmac_sha256(self.secret.as_slice(), self.a.as_slice());
+        input.push_all(&self.seed[]);
+        let next = hmac_sha256(&self.secret[], &input[]);
+        self.a = hmac_sha256(&self.secret[], &self.a[]);
 
         next
     }
@@ -68,7 +64,7 @@ impl Prf {
                 if buflen <= size {
                     mem::replace(&mut self.buf, Vec::new())
                 } else {
-                    let rest = self.buf.slice_from(size).to_vec();
+                    let rest = self.buf[size..].to_vec();
                     let mut buf = mem::replace(&mut self.buf, rest);
                     buf.truncate(size);
                     buf
@@ -82,10 +78,10 @@ impl Prf {
             let next_block = self.next_block();
             let slice_len = size - ret.len();
             if slice_len > 32 {
-                ret.push_all(next_block.as_slice());
+                ret.push_all(&next_block[]);
             } else {
-                ret.push_all(next_block.slice_to(slice_len));
-                self.buf = next_block.slice_from(slice_len).to_vec();
+                ret.push_all(&next_block[..slice_len]);
+                self.buf = next_block[slice_len..].to_vec();
                 break;
             };
         }
@@ -132,7 +128,7 @@ mod test {
 
         for &(key, input, expected) in VALUES.iter() {
             let actual = hmac_sha256(key, input);
-            assert_eq!(actual.as_slice(), expected);
+            assert_eq!(&actual[], expected);
         }
     }
 

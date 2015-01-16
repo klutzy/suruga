@@ -204,17 +204,11 @@ macro_rules! tls_array {
                     Ok($name(v))
                 }
             }
-
-            pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-                let $name(ref v) = *self;
-                v.as_slice()
-            }
         }
 
         impl TlsItem for $name {
             fn tls_write<W: Writer>(&self, writer: &mut W) -> $crate::tls_result::TlsResult<()> {
-                let $name(ref data) = *self;
-                try!(writer.write(data.as_slice()));
+                try!(writer.write(&self.0[]));
                 Ok(())
             }
 
@@ -225,6 +219,13 @@ macro_rules! tls_array {
 
             fn tls_size(&self) -> u64 {
                 $n
+            }
+        }
+
+        impl ::std::ops::Deref for $name {
+            type Target = [u8];
+            fn deref<'a>(&'a self) -> &'a [u8] {
+                &self.0[]
             }
         }
     )
@@ -256,11 +257,6 @@ macro_rules! tls_vec {
                 } else {
                     Ok(ret)
                 }
-            }
-
-            pub fn as_slice<'a>(&'a self) -> &'a [$item_ty] {
-                let $name(ref v) = *self;
-                v.as_slice()
             }
 
             pub fn unwrap(self) -> Vec<$item_ty> {
@@ -426,7 +422,7 @@ pub struct ObscureData(Vec<u8>);
 
 impl TlsItem for ObscureData {
     fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
-        try!(writer.write(self.as_slice()));
+        try!(writer.write(&self.0[]));
         Ok(())
     }
 
@@ -435,7 +431,7 @@ impl TlsItem for ObscureData {
         Ok(ObscureData(data))
     }
 
-    fn tls_size(&self) -> u64 { self.as_slice().len() as u64 }
+    fn tls_size(&self) -> u64 { self.0.len() as u64 }
 }
 
 impl ObscureData {
@@ -443,13 +439,15 @@ impl ObscureData {
         ObscureData(data)
     }
 
-    pub fn as_slice(&self) -> &[u8] {
-        let ObscureData(ref data) = *self;
-        data.as_slice()
-    }
-
     pub fn unwrap(self) -> Vec<u8> {
         let ObscureData(data) = self;
         data
+    }
+}
+
+impl ::std::ops::Deref for ObscureData {
+    type Target = [u8];
+    fn deref<'a>(&'a self) -> &'a [u8] {
+        &self.0[]
     }
 }
