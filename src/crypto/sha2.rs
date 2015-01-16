@@ -2,12 +2,12 @@
 // not seriously audited.
 // no bit-level support. sorry
 
-const INIT_VAL: [u32, ..8] = [
+const INIT_VAL: [u32; 8] = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
     0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
 ];
 
-static K: [u32, ..64] = [
+static K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
     0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
@@ -23,17 +23,16 @@ macro_rules! be_u32 {
     // warning: $e is byte-oriented offset
     ($a:ident[$e:expr]) => ({
         let e = $e;
-        let a = $a.as_slice();
-        let b0 = a[e + 0] as u32;
-        let b1 = a[e + 1] as u32;
-        let b2 = a[e + 2] as u32;
-        let b3 = a[e + 3] as u32;
+        let b0 = $a[e + 0] as u32;
+        let b1 = $a[e + 1] as u32;
+        let b2 = $a[e + 2] as u32;
+        let b3 = $a[e + 3] as u32;
         (b0 << 8 * 3) | (b1 << 8 * 2) | (b2 << 8 * 1) | b3
     })
 }
 
-pub fn sha256(msg: &[u8]) -> [u8, ..32] {
-    fn rot(a: u32, b: uint) -> u32 {
+pub fn sha256(msg: &[u8]) -> [u8; 32] {
+    fn rot(a: u32, b: usize) -> u32 {
         (a >> b) | (a << (32 - b))
     }
 
@@ -41,12 +40,12 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
     let mut msg = msg.to_vec();
 
     msg.push(0x80);
-    for _ in range(0, (64 - 8 - 1 - len) & 63) {
+    for _ in 0..((64 - 8 - 1 - len) & 63) {
         msg.push(0);
     }
 
     let bitlen = (len as u64) * 8; // FIXME: is overflow intended in spec?
-    for i in range(0u, 8u).rev() {
+    for i in (0us..8us).rev() {
         let b = (bitlen >> (8 * i)) as u8;
         msg.push(b);
     }
@@ -57,12 +56,10 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
 
     let mut val = INIT_VAL;
 
-    for i in range(0, nblk) {
+    for i in (0..nblk) {
         let w = {
-            let msg = msg.as_slice();
-
-            let mut w = [0u32, ..64];
-            for j in range(0, 16u) {
+            let mut w = [0u32; 64];
+            for j in 0..16us {
                 let b0 = msg[i * 64 + j * 4 + 0] as u32;
                 let b1 = msg[i * 64 + j * 4 + 1] as u32;
                 let b2 = msg[i * 64 + j * 4 + 2] as u32;
@@ -70,7 +67,7 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
                 w[j] = (b0 << 8 * 3) | (b1 << 8 * 2) | (b2 << 8 * 1) | b3;
             }
 
-            for j in range(16, 64u) {
+            for j in 16..64us {
                 let wj15 = w[j - 15];
                 let sig0 = rot(wj15, 7) ^ rot(wj15, 18) ^ (wj15 >> 3);
 
@@ -91,7 +88,7 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
         let mut g: u32 = val[6];
         let mut h: u32 = val[7];
 
-        for j in range(0, 64u) {
+        for j in 0..64us {
             let ch = (e & f) ^ ((!e) & g);
             let maj = (a & b) ^ (a & c) ^ (b & c);
 
@@ -122,8 +119,8 @@ pub fn sha256(msg: &[u8]) -> [u8, ..32] {
 
     }
 
-    let mut ret = [0u8, ..32];
-    for i in range(0, 8u) {
+    let mut ret = [0u8; 32];
+    for i in 0..8us {
         ret[i * 4 + 0] = (val[i] >> 8 * 3) as u8;
         ret[i * 4 + 1] = (val[i] >> 8 * 2) as u8;
         ret[i * 4 + 2] = (val[i] >> 8 * 1) as u8;
@@ -152,7 +149,7 @@ mod test {
 
         for &(input, expected) in ANSWERS.iter() {
             let computed = sha256(input);
-            assert_eq!(expected, computed.as_slice());
+            assert_eq!(expected, &computed[]);
         }
     }
 }

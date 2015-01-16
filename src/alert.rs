@@ -2,14 +2,14 @@ use tls_result::{TlsResult, TlsError, TlsErrorKind};
 use tls_item::TlsItem;
 
 // we treat every alert as fatal.
-tls_enum!(u8 enum AlertLevel {
+tls_enum!(u8, enum AlertLevel {
     warning(1),
     fatal(2)
 });
 
 // A.3. Alert Messages
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
-tls_enum!(u8 #[deriving(Show)] enum AlertDescription {
+tls_enum!(u8, #[derive(Show)] enum AlertDescription {
     close_notify(0),
     unexpected_message(10),
     bad_record_mac(20),

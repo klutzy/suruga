@@ -1,7 +1,7 @@
 use std::error::{Error, FromError};
 use std::io::IoError;
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum TlsErrorKind {
     // corresponds to alert messages
 
@@ -18,7 +18,7 @@ pub enum TlsErrorKind {
     AlertReceived,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct TlsError {
     pub kind: TlsErrorKind,
     pub desc: String,

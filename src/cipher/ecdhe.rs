@@ -9,13 +9,13 @@ use handshake::NamedCurve;
 use signature::DigitallySigned;
 use super::KeyExchange;
 
-tls_vec!(EcData = u8(1 ... (1 << 8) - 1));
+tls_vec!(EcData = u8(1, (1 << 8) - 1));
 tls_struct!(struct EcCurve {
     a: EcData,
     b: EcData
 });
 
-tls_enum_struct!(u8 enum EcParameters {
+tls_enum_struct!(u8, enum EcParameters {
     // explicit_prime(...) = 1,
     // explicit_char2(...) = 2,
     named_curve(NamedCurve) = 3
@@ -38,7 +38,7 @@ impl KeyExchange for EllipticDiffieHellman {
         let mut reader = BufReader::new(data);
         let ecdh_params: EcdheServerKeyExchange = try!(TlsItem::tls_read(&mut reader));
 
-        let gy = ecdh_params.params.public.as_slice();
+        let gy = &*ecdh_params.params.public;
         let gy = p256::NPoint256::from_uncompressed_bytes(gy);
         let gy = match gy {
             None => {
@@ -51,7 +51,7 @@ impl KeyExchange for EllipticDiffieHellman {
         fn get_random_x(rng: &mut OsRng) -> p256::int256::Int256 {
             loop {
                 let mut x = p256::int256::ZERO;
-                for i in range(0u, 8) {
+                for i in 0us..8 {
                     x.v[i] = rng.next_u32();
                 }
                 let xx = x.reduce_once(0);

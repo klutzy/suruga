@@ -1,5 +1,3 @@
-#![macro_escape]
-
 use tls_result::TlsResult;
 
 pub trait TlsItem {
@@ -80,7 +78,7 @@ macro_rules! tls_struct {
 
 macro_rules! tls_enum {
     (
-        $repr_ty:ident
+        $repr_ty:ident,
         $(#[$a:meta])*
         enum $name:ident {
             $(
@@ -89,7 +87,7 @@ macro_rules! tls_enum {
         }
     ) => (
         #[allow(non_camel_case_types)]
-        #[deriving(Copy, PartialEq, FromPrimitive)]
+        #[derive(Copy, PartialEq, FromPrimitive)]
         $(#[$a])*
         pub enum $name {
             $(
@@ -105,7 +103,7 @@ macro_rules! tls_enum {
 
             fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
                 let num = stry_read_num!($repr_ty, reader) as u64;
-                let n: Option<$name> = FromPrimitive::from_u64(num);
+                let n: Option<$name> = ::std::num::FromPrimitive::from_u64(num);
                 match n {
                     Some(n) => Ok(n),
                     None => tls_err!(::tls_result::TlsErrorKind::DecodeError,
@@ -134,7 +132,7 @@ macro_rules! tls_enum {
 // } Struct;
 macro_rules! tls_enum_struct {
     (
-        $repr_ty:ident
+        $repr_ty:ident,
         $(#[$a:meta])*
         enum $enum_name:ident {
             $(
@@ -196,31 +194,25 @@ macro_rules! tls_array {
         pub struct $name(Vec<u8>);
 
         impl $name {
-            pub fn new(v: Vec<u8>) -> ::tls_result::TlsResult<$name> {
-                let n: uint = $n;
+            pub fn new(v: Vec<u8>) -> $crate::tls_result::TlsResult<$name> {
+                let n: usize = $n;
                 let len = v.len();
                 if len != n {
-                    return tls_err!(::tls_result::TlsErrorKind::InternalError,
+                    return tls_err!($crate::tls_result::TlsErrorKind::InternalError,
                                     "bad size: {} != {}", len, n);
                 } else {
                     Ok($name(v))
                 }
             }
-
-            pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-                let $name(ref v) = *self;
-                v.as_slice()
-            }
         }
 
         impl TlsItem for $name {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
-                let $name(ref data) = *self;
-                try!(writer.write(data.as_slice()));
+            fn tls_write<W: Writer>(&self, writer: &mut W) -> $crate::tls_result::TlsResult<()> {
+                try!(writer.write(&self.0[]));
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
+            fn tls_read<R: Reader>(reader: &mut R) -> $crate::tls_result::TlsResult<$name> {
                 let data = try!(reader.read_exact($n));
                 Ok($name(data))
             }
@@ -229,15 +221,22 @@ macro_rules! tls_array {
                 $n
             }
         }
+
+        impl ::std::ops::Deref for $name {
+            type Target = [u8];
+            fn deref<'a>(&'a self) -> &'a [u8] {
+                &self.0[]
+            }
+        }
     )
 }
 
 macro_rules! tls_vec {
     // $item_ty must implement TlsItem
-    ($name:ident = $item_ty:ident($size_min:expr ... $size_max:expr)) => (
+    ($name:ident = $item_ty:ident($size_min:expr, $size_max:expr)) => (
         pub struct $name(Vec<$item_ty>);
         impl $name {
-            pub fn new(v: Vec<$item_ty>) -> ::tls_result::TlsResult<$name> {
+            pub fn new(v: Vec<$item_ty>) -> $crate::tls_result::TlsResult<$name> {
                 #![allow(unused_comparisons)] // disable warnings for e.g. `size < 0`
 
                 let size_min: u64 = $size_min;
@@ -246,23 +245,18 @@ macro_rules! tls_vec {
                 let ret = $name(v);
                 let size: u64 = ret.data_size();
                 if size < size_min {
-                    return tls_err!(::tls_result::TlsErrorKind::DecodeError,
+                    return tls_err!($crate::tls_result::TlsErrorKind::DecodeError,
                                     "bad size: {} < {}",
                                     size,
                                     size_min);
                 } else if size > size_max {
-                    return tls_err!(::tls_result::TlsErrorKind::DecodeError,
+                    return tls_err!($crate::tls_result::TlsErrorKind::DecodeError,
                     "bad size: {} > {}",
                     size,
                     size_max);
                 } else {
                     Ok(ret)
                 }
-            }
-
-            pub fn as_slice<'a>(&'a self) -> &'a [$item_ty] {
-                let $name(ref v) = *self;
-                v.as_slice()
             }
 
             pub fn unwrap(self) -> Vec<$item_ty> {
@@ -358,10 +352,10 @@ macro_rules! tls_vec {
             }
         }
 
-        impl Deref<Vec<$item_ty>> for $name {
-            fn deref<'a>(&'a self) -> &'a Vec<$item_ty> {
-                let $name(ref r) = *self;
-                r
+        impl ::std::ops::Deref for $name {
+            type Target = [$item_ty];
+            fn deref<'a>(&'a self) -> &'a [$item_ty] {
+                &self.0[]
             }
         }
     )
@@ -428,7 +422,7 @@ pub struct ObscureData(Vec<u8>);
 
 impl TlsItem for ObscureData {
     fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
-        try!(writer.write(self.as_slice()));
+        try!(writer.write(&self.0[]));
         Ok(())
     }
 
@@ -437,7 +431,7 @@ impl TlsItem for ObscureData {
         Ok(ObscureData(data))
     }
 
-    fn tls_size(&self) -> u64 { self.as_slice().len() as u64 }
+    fn tls_size(&self) -> u64 { self.0.len() as u64 }
 }
 
 impl ObscureData {
@@ -445,13 +439,15 @@ impl ObscureData {
         ObscureData(data)
     }
 
-    pub fn as_slice(&self) -> &[u8] {
-        let ObscureData(ref data) = *self;
-        data.as_slice()
-    }
-
     pub fn unwrap(self) -> Vec<u8> {
         let ObscureData(data) = self;
         data
+    }
+}
+
+impl ::std::ops::Deref for ObscureData {
+    type Target = [u8];
+    fn deref<'a>(&'a self) -> &'a [u8] {
+        &self.0[]
     }
 }

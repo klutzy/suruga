@@ -11,9 +11,9 @@ pub mod ecdhe;
 pub mod chacha20_poly1305;
 
 pub trait Aead {
-    fn key_size(&self) -> uint;
-    fn fixed_iv_len(&self) -> uint;
-    fn mac_len(&self) -> uint;
+    fn key_size(&self) -> usize;
+    fn fixed_iv_len(&self) -> usize;
+    fn mac_len(&self) -> usize;
     fn new_encryptor(&self, key: Vec<u8>) -> Box<Encryptor + 'static>;
     fn new_decryptor(&self, key: Vec<u8>) -> Box<Decryptor + 'static>;
 }
@@ -27,7 +27,7 @@ pub trait Encryptor {
 pub trait Decryptor {
     fn decrypt(&mut self, nonce: &[u8], encrypted: &[u8], ad: &[u8]) -> TlsResult<Vec<u8>>;
     // FIXME: copied from Aead since record::RecordReader wants this
-    fn mac_len(&self) -> uint;
+    fn mac_len(&self) -> usize;
 }
 
 pub trait KeyExchange {
@@ -37,10 +37,10 @@ pub trait KeyExchange {
 
 macro_rules! cipher_suite {
     ($(
-        $id:ident = $kex:ident $cipher:ident $mac:ident $v1:expr $v2:expr;
+        $id:ident = $kex:ident, $cipher:ident, $mac:ident, $v1:expr, $v2:expr;
     )+) => (
         #[allow(non_camel_case_types)]
-        #[deriving(Copy, PartialEq, Show)]
+        #[derive(Copy, PartialEq, Show)]
         pub enum CipherSuite {
             $(
                 $id,
@@ -68,7 +68,7 @@ macro_rules! cipher_suite {
             }
 
             // this can be different for some cipher suites
-            pub fn verify_data_len(&self) -> uint { 12 }
+            pub fn verify_data_len(&self) -> usize { 12 }
         }
 
         impl TlsItem for CipherSuite {
@@ -81,7 +81,7 @@ macro_rules! cipher_suite {
                     }
                 )+
 
-                return tls_err!(UnexpectedMessage, "unexpected CipherSuite: {}", self);
+                return tls_err!(UnexpectedMessage, "unexpected CipherSuite: {:?}", self);
             }
 
             fn tls_read<R: Reader>(reader: &mut R) -> TlsResult<CipherSuite> {
@@ -107,7 +107,7 @@ macro_rules! cipher_suite {
 cipher_suite!(
     // http://tools.ietf.org/html/draft-agl-tls-chacha20poly1305-04
     TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 =
-    EllipticDiffieHellman ChaCha20Poly1305 MAC_SHA256 0xcc 0x13;
+    EllipticDiffieHellman, ChaCha20Poly1305, MAC_SHA256, 0xcc, 0x13;
     // TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 =
     // EllipticDiffieHellman ChaCha20Poly1305 MAC_SHA256 0xcc 0x14;
 );

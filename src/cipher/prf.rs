@@ -5,29 +5,25 @@ use std::mem;
 use crypto::sha2::sha256;
 
 // key is SECRET, but the length is publicly known.
-pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8, ..32] {
-    static B: uint = 64;
+pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
+    const B: usize = 64;
 
     if key.len() > B {
         // FIXME
         unimplemented!();
     }
 
-    let mut i_msg = Vec::from_elem(B, 0x36u8);
-    let mut o_msg = Vec::from_elem(B, 0x5cu8);
-    {
-        let i_msg = i_msg.as_mut_slice();
-        let o_msg = o_msg.as_mut_slice();
-        for i in range(0u, key.len()) {
-            i_msg[i] ^= key[i];
-            o_msg[i] ^= key[i];
-        }
+    let mut i_msg = [0x36u8; B].to_vec();
+    let mut o_msg = [0x5cu8; B].to_vec();
+    for i in (0us..key.len()) {
+        i_msg[i] ^= key[i];
+        o_msg[i] ^= key[i];
     }
 
     i_msg.push_all(msg);
-    let h_i = sha256(i_msg.as_slice());
-    o_msg.push_all(h_i.as_slice());
-    let h_o = sha256(o_msg.as_slice());
+    let h_i = sha256(&i_msg[]);
+    o_msg.push_all(&h_i[]);
+    let h_o = sha256(&o_msg[]);
 
     h_o
 }
@@ -35,7 +31,7 @@ pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8, ..32] {
 pub struct Prf {
     secret: Vec<u8>, // SECRET
     seed: Vec<u8>,
-    a: [u8, ..32],
+    a: [u8; 32],
     buf: Vec<u8>,
 }
 
@@ -52,23 +48,23 @@ impl Prf {
     }
 
     // get 32-byte pseudorandom number.
-    fn next_block(&mut self) -> [u8, ..32] {
+    fn next_block(&mut self) -> [u8; 32] {
         let mut input = self.a.to_vec();
-        input.push_all(self.seed.as_slice());
-        let next = hmac_sha256(self.secret.as_slice(), input.as_slice());
-        self.a = hmac_sha256(self.secret.as_slice(), self.a.as_slice());
+        input.push_all(&self.seed[]);
+        let next = hmac_sha256(&self.secret[], &input[]);
+        self.a = hmac_sha256(&self.secret[], &self.a[]);
 
         next
     }
 
-    pub fn get_bytes(&mut self, size: uint) -> Vec<u8> {
+    pub fn get_bytes(&mut self, size: usize) -> Vec<u8> {
         let mut ret = {
             let buflen = self.buf.len();
             if buflen > 0 {
                 if buflen <= size {
                     mem::replace(&mut self.buf, Vec::new())
                 } else {
-                    let rest = self.buf.slice_from(size).to_vec();
+                    let rest = self.buf[size..].to_vec();
                     let mut buf = mem::replace(&mut self.buf, rest);
                     buf.truncate(size);
                     buf
@@ -82,10 +78,10 @@ impl Prf {
             let next_block = self.next_block();
             let slice_len = size - ret.len();
             if slice_len > 32 {
-                ret.push_all(next_block.as_slice());
+                ret.push_all(&next_block[]);
             } else {
-                ret.push_all(next_block.slice_to(slice_len));
-                self.buf = next_block.slice_from(slice_len).to_vec();
+                ret.push_all(&next_block[..slice_len]);
+                self.buf = next_block[slice_len..].to_vec();
                 break;
             };
         }
@@ -132,7 +128,7 @@ mod test {
 
         for &(key, input, expected) in VALUES.iter() {
             let actual = hmac_sha256(key, input);
-            assert_eq!(actual.as_slice(), expected);
+            assert_eq!(&actual[], expected);
         }
     }
 
@@ -141,8 +137,8 @@ mod test {
         let ret1 = {
             let mut prf = Prf::new(b"", b"");
             let mut ret = Vec::new();
-            for _ in range(0u, 100) {
-                ret.push_all(prf.get_bytes(1)[]);
+            for _ in 0us..100 {
+                ret.push_all(&prf.get_bytes(1)[]);
             }
             ret
         };
@@ -157,8 +153,8 @@ mod test {
         let ret3 = {
             let mut prf = Prf::new(b"", b"");
             let mut b = prf.get_bytes(33);
-            b.push_all(prf.get_bytes(33)[]);
-            b.push_all(prf.get_bytes(100 - 33 * 2)[]);
+            b.push_all(&prf.get_bytes(33)[]);
+            b.push_all(&prf.get_bytes(100 - 33 * 2)[]);
             b
         };
 
