@@ -189,8 +189,8 @@ impl Point256 {
 
     pub fn mult_scalar(&self, n: &Int256) -> Point256 {
         let mut ret = INFTY.clone();
-        for i in range(0u, 7).rev() {
-            for j in range(0u, 8).rev() {
+        for i in range(0us, 7).rev() {
+            for j in range(0us, 8).rev() {
                 let bit = (n.v[i] >> j) & 1;
 
                 let ret2 = ret.double();
@@ -269,7 +269,7 @@ impl NPoint256 {
 }
 
 pub mod int256 {
-    const LIMBS: uint = 8;
+    const LIMBS: usize = 8;
 
     // 2^32-radix: value = v[0] + 2^32 v[1] + ... + 2^124 v[7]
     // value must be < P256
@@ -297,7 +297,7 @@ pub mod int256 {
         // otherwise return 1.
         pub fn compare(&self, b: &Int256) -> u32 {
             let mut diff = 0u32;
-            for i in range(0u, LIMBS) {
+            for i in range(0us, LIMBS) {
                 diff |= self.v[i] ^ b.v[i];
             }
             diff |= diff >> 16;
@@ -312,7 +312,7 @@ pub mod int256 {
         // if flag == 1, returns b
         pub fn choose(flag: u32, a: &Int256, b: &Int256) -> Int256 {
             let mut v = [0; LIMBS];
-            for i in range(0u, LIMBS) {
+            for i in range(0us, LIMBS) {
                 v[i] = a.v[i] ^ (flag * (a.v[i] ^ b.v[i]));
             }
             Int256 { v: v }
@@ -327,7 +327,7 @@ pub mod int256 {
 
             // invariant: carry <= 1
             let mut carry = 0u64;
-            for i in range(0u, LIMBS) {
+            for i in range(0us, LIMBS) {
                 // add <= 2^33
                 let add = (self.v[i] as u64) + (b.v[i] as u64) + carry;
                 v.v[i] = add as u32;
@@ -345,7 +345,7 @@ pub mod int256 {
 
             // invariant: carry_sub <= 1
             let mut carry_sub = 0u64;
-            for i in range(0u, LIMBS) {
+            for i in range(0us, LIMBS) {
                 // -2^32 <= sub <= 2^32
                 let sub = (self.v[i] as u64) - (b.v[i] as u64) - carry_sub;
                 // if sub < 0, set carry_sub = 1 and sub += 2^32
@@ -387,8 +387,8 @@ pub mod int256 {
 
         pub fn mult(&self, b: &Int256) -> Int256 {
             let mut w = [0u64; LIMBS * 2];
-            for i in range(0u, LIMBS) {
-                for j in range(0u, LIMBS) {
+            for i in range(0us, LIMBS) {
+                for j in range(0us, LIMBS) {
                     let ij = i + j;
                     let v_ij = (self.v[i] as u64) * (b.v[j] as u64);
                     let v_ij_low = (v_ij as u32) as u64;
@@ -403,7 +403,7 @@ pub mod int256 {
 
             let mut v = [0u32; LIMBS * 2];
             let mut carry = 0u64;
-            for i in range(0u, LIMBS * 2) {
+            for i in range(0us, LIMBS * 2) {
                 let a = w[i] + carry;
                 v[i] = a as u32;
                 carry = a >> 32;
@@ -411,25 +411,25 @@ pub mod int256 {
             debug_assert_eq!(carry, 0);
 
             let mut buf = ZERO;
-            for i in range(0u, LIMBS) {
+            for i in range(0us, LIMBS) {
                 buf.v[i] = v[i];
             }
             let t = buf.reduce_once(0);
 
             let mut buf = ZERO;
-            for i in range(0u, 5) {
+            for i in range(0us, 5) {
                 buf.v[i + 3] = v[i + 11];
             }
             let s1 = buf.reduce_once(0);
 
             let mut buf = ZERO;
-            for i in range(0u, 4) {
+            for i in range(0us, 4) {
                 buf.v[i + 3] = v[i + 12];
             }
             let s2 = buf.reduce_once(0);
 
             let mut buf = ZERO;
-            for i in range(0u, 3) {
+            for i in range(0us, 3) {
                 buf.v[i] = v[i + 8];
             }
             buf.v[6] = v[14];
@@ -437,7 +437,7 @@ pub mod int256 {
             let s3 = buf.reduce_once(0);
 
             let mut buf = ZERO;
-            for i in range(0u, 3) {
+            for i in range(0us, 3) {
                 buf.v[i] = v[i + 9];
                 buf.v[i + 3] = v[i + 13];
             }
@@ -446,7 +446,7 @@ pub mod int256 {
             let s4 = buf.reduce_once(0);
 
             let mut buf = ZERO;
-            for i in range(0u, 3) {
+            for i in range(0us, 3) {
                 buf.v[i] = v[i + 11];
             }
             buf.v[6] = v[8];
@@ -454,7 +454,7 @@ pub mod int256 {
             let d1 = buf.reduce_once(0);
 
             let mut buf = ZERO;
-            for i in range(0u, 4) {
+            for i in range(0us, 4) {
                 buf.v[i] = v[i + 12];
             }
             buf.v[6] = v[9];
@@ -462,7 +462,7 @@ pub mod int256 {
             let d2 = buf.reduce_once(0);
 
             let mut buf = ZERO;
-            for i in range(0u, 3) {
+            for i in range(0us, 3) {
                 buf.v[i] = v[i + 13];
                 buf.v[i + 3] = v[i + 8];
             }
@@ -470,7 +470,7 @@ pub mod int256 {
             let d3 = buf.reduce_once(0);
 
             let mut buf = ZERO;
-            for i in range(0u, 3) {
+            for i in range(0us, 3) {
                 buf.v[i + 3] = v[i + 9];
             }
             buf.v[7] = v[13];
@@ -496,7 +496,7 @@ pub mod int256 {
             // 2^224 = (2^32)^7
 
             // compute a^(2^n)
-            fn square_n(a: &Int256, n: uint) -> Int256 {
+            fn square_n(a: &Int256, n: usize) -> Int256 {
                 let mut y = a.clone();
                 for _ in range(0, n) {
                     y = y.square();
@@ -506,7 +506,7 @@ pub mod int256 {
 
             // compute z^(2^n + 1)
             // if z == self^(2^n - 1), it returns self^(2^(2n) - 1)
-            fn z_n(z: &Int256, n: uint) -> Int256 {
+            fn z_n(z: &Int256, n: usize) -> Int256 {
                 let y = square_n(z, n);
                 y.mult(z)
             }
@@ -552,14 +552,14 @@ pub mod int256 {
             let is_odd = self.v[0] & 1;
 
             let mut half_even = ZERO;
-            for i in range(0u, LIMBS - 1) {
+            for i in range(0us, LIMBS - 1) {
                 half_even.v[i] = (self.v[i] >> 1) | ((self.v[i + 1] & 1) << 31);
             }
             half_even.v[LIMBS - 1] = self.v[LIMBS - 1] >> 1;
 
             let mut half_odd = ZERO;
             let (self_p, carry) = self.add_no_reduce(&P256);
-            for i in range(0u, LIMBS - 1) {
+            for i in range(0us, LIMBS - 1) {
                 half_odd.v[i] = (self_p.v[i] >> 1) | ((self_p.v[i + 1] & 1) << 31);
             }
             half_odd.v[LIMBS - 1] = (self_p.v[LIMBS - 1] >> 1) | (carry << 31);
@@ -571,9 +571,9 @@ pub mod int256 {
         // big-endian.
         pub fn to_bytes(&self) -> Vec<u8> {
             let mut b = [0u8; 256 / 8];
-            for i in range(0u, LIMBS) {
+            for i in range(0us, LIMBS) {
                 let vi = self.v[LIMBS - 1 - i];
-                for j in range(0u, 4) {
+                for j in range(0us, 4) {
                     b[i * 4 + j] = (vi >> ((3 - j) * 8)) as u8;
                 }
             }
@@ -588,9 +588,9 @@ pub mod int256 {
             }
 
             let mut x = ZERO;
-            for i in range(0u, LIMBS) {
+            for i in range(0us, LIMBS) {
                 let mut vi = 0u32;
-                for j in range(0u, 4) {
+                for j in range(0us, 4) {
                     vi |= (b[i * 4 + j] as u32) << ((3 - j) * 8);
                 }
                 x.v[LIMBS - 1 - i] = vi;

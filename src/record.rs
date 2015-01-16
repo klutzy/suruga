@@ -24,10 +24,10 @@ pub enum ContentType {
 }
 
 /// maximum length of Record (excluding content_type, version, length fields)
-pub const RECORD_MAX_LEN: uint = 1 << 14;
+pub const RECORD_MAX_LEN: usize = 1 << 14;
 
 /// maximum length of EncryptedRecord (excluding content_type, version, length fields)
-pub const ENC_RECORD_MAX_LEN: uint = (1 << 14) + 2048;
+pub const ENC_RECORD_MAX_LEN: usize = (1 << 14) + 2048;
 
 /// corresponds to `TLSPlaintext` in Section 6.2.1.
 pub struct Record {
@@ -223,14 +223,14 @@ impl<R: Reader> RecordReader<R> {
         let minor = try!(self.reader.read_u8());
 
         let len = {
-            let len = try!(self.reader.read_be_u16()) as uint;
+            let len = try!(self.reader.read_be_u16()) as usize;
             if len > ENC_RECORD_MAX_LEN {
                 return tls_err!(RecordOverflow, "TLSEncryptedText too long: {}", len);
             }
             len
         };
 
-        let fragment = try!(self.reader.read_exact(len as uint));
+        let fragment = try!(self.reader.read_exact(len as usize));
         let enc_record = EncryptedRecord::new(ty, major, minor, fragment);
 
         let record = match self.decryptor {

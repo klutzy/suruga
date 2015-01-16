@@ -18,7 +18,7 @@ pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
     {
         let i_msg = i_msg.as_mut_slice();
         let o_msg = o_msg.as_mut_slice();
-        for i in range(0u, key.len()) {
+        for i in range(0us, key.len()) {
             i_msg[i] ^= key[i];
             o_msg[i] ^= key[i];
         }
@@ -61,7 +61,7 @@ impl Prf {
         next
     }
 
-    pub fn get_bytes(&mut self, size: uint) -> Vec<u8> {
+    pub fn get_bytes(&mut self, size: usize) -> Vec<u8> {
         let mut ret = {
             let buflen = self.buf.len();
             if buflen > 0 {
@@ -141,7 +141,7 @@ mod test {
         let ret1 = {
             let mut prf = Prf::new(b"", b"");
             let mut ret = Vec::new();
-            for _ in range(0u, 100) {
+            for _ in range(0us, 100) {
                 ret.push_all(&prf.get_bytes(1)[]);
             }
             ret
