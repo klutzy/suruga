@@ -1,7 +1,10 @@
-#![feature(slicing_syntax)]
 #![crate_type = "lib"]
 #![crate_name = "suruga"]
+
 #![allow(missing_copy_implementations)]
+
+#![feature(slicing_syntax)]
+#![allow(unstable)]
 
 #[macro_use]
 extern crate log;
