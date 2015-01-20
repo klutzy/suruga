@@ -36,12 +36,12 @@ pub struct Prf {
 }
 
 impl Prf {
-    pub fn new(secret: &[u8], seed: &[u8]) -> Prf {
-        let a1 = hmac_sha256(secret, seed);
+    pub fn new(secret: Vec<u8>, seed: Vec<u8>) -> Prf {
+        let a1 = hmac_sha256(&secret[], &seed[]);
 
         Prf {
-            secret: secret.to_vec(),
-            seed: seed.to_vec(),
+            secret: secret,
+            seed: seed,
             a: a1,
             buf: Vec::new(),
         }
@@ -135,7 +135,7 @@ mod test {
     #[test]
     fn test_get_bytes() {
         let ret1 = {
-            let mut prf = Prf::new(b"", b"");
+            let mut prf = Prf::new(Vec::new(), Vec::new());
             let mut ret = Vec::new();
             for _ in 0us..100 {
                 ret.push_all(&prf.get_bytes(1)[]);
@@ -144,14 +144,14 @@ mod test {
         };
 
         let ret2 = {
-            let mut prf = Prf::new(b"", b"");
+            let mut prf = Prf::new(Vec::new(), Vec::new());
             prf.get_bytes(100)
         };
 
         assert_eq!(ret1, ret2);
 
         let ret3 = {
-            let mut prf = Prf::new(b"", b"");
+            let mut prf = Prf::new(Vec::new(), Vec::new());
             let mut b = prf.get_bytes(33);
             b.push_all(&prf.get_bytes(33)[]);
             b.push_all(&prf.get_bytes(100 - 33 * 2)[]);

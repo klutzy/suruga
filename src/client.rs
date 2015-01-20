@@ -117,7 +117,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
             label_seed.push_all(&*cli_random);
             label_seed.push_all(&*server_hello_data.random);
 
-            let mut prf = Prf::new(&pre_master_secret[], &label_seed[]);
+            let mut prf = Prf::new(pre_master_secret, label_seed);
             prf.get_bytes(48)
         };
 
@@ -129,7 +129,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
             label_seed.push_all(&*server_hello_data.random);
             label_seed.push_all(&*cli_random);
 
-            let mut prf = Prf::new(&master_secret[], &label_seed[]);
+            let mut prf = Prf::new(master_secret.clone(), label_seed);
 
             // mac_key is not used in AEAD configuration.
 
@@ -173,7 +173,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
 
             let mut label_seed = finished_label.to_vec();
             label_seed.push_all(&verify_hash[]);
-            let mut prf = Prf::new(&master_secret[], &label_seed[]);
+            let mut prf = Prf::new(master_secret.clone(), label_seed);
             prf.get_bytes(cipher_suite.verify_data_len())
         };
         let finished = try!(Handshake::new_finished(client_verify_data));
@@ -204,7 +204,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
 
                 let mut label_seed = finished_label.to_vec();
                 label_seed.push_all(&verify_hash[]);
-                let mut prf = Prf::new(&*master_secret, &label_seed[]);
+                let mut prf = Prf::new(master_secret, label_seed);
                 prf.get_bytes(cipher_suite.verify_data_len())
             };
 
