@@ -10,12 +10,16 @@ extern crate num;
 
 #[macro_use]
 extern crate enum_primitive;
+extern crate chrono;
 
 pub use client::TlsClient;
 
 #[macro_use]
 pub mod macros;
 pub mod util;
+
+#[macro_use]
+pub mod der;
 
 // basic crypto primitives
 pub mod crypto;
