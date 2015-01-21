@@ -1,7 +1,7 @@
 #![crate_type = "lib"]
 #![crate_name = "suruga"]
 
-#![feature(slice_bytes)]
+#![feature(slice_bytes, slice_patterns)]
 
 #[macro_use]
 extern crate log;
@@ -37,5 +37,8 @@ pub mod handshake;
 
 pub mod tls;
 pub mod client;
+
+#[macro_use]
+pub mod x509;
 
 #[cfg(test)] mod test;
