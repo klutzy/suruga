@@ -1,7 +1,7 @@
-use std::io::net::tcp::TcpStream;
+use std::old_io::net::tcp::TcpStream;
 use std::slice::bytes::copy_memory;
 use std::cmp;
-use std::io::{IoResult, IoError, OtherIoError};
+use std::old_io::{IoResult, IoError, OtherIoError};
 use std::rand::{Rng, OsRng};
 
 use tls_result::TlsResult;
@@ -253,6 +253,10 @@ impl<R: Reader, W: Writer> Writer for TlsClient<R, W> {
             }
         }
     }
+
+	fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+		return self.write(buf);
+	}
 }
 
 impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {

@@ -1,4 +1,4 @@
-use std::io::MemReader;
+use std::old_io::MemReader;
 
 use tls::TLS_VERSION;
 use tls_result::TlsResult;
@@ -340,7 +340,7 @@ impl Handshake {
 
 #[cfg(test)]
 mod test {
-    use std::io::MemReader;
+    use std::old_io::MemReader;
     use tls_item::TlsItem;
     use cipher::CipherSuite;
 

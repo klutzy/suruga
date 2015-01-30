@@ -1,4 +1,4 @@
-use std::io::{MemReader, ByRefReader, ByRefWriter};
+use std::old_io::{MemReader, ByRefReader, ByRefWriter};
 use std::rand::OsRng;
 use std::iter::repeat;
 
