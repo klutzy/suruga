@@ -383,7 +383,7 @@ macro_rules! tls_option {
                             return Ok(None);
                         }
 
-                        let mut rest_reader = ::std::io::MemReader::new(rest);
+                        let mut rest_reader = ::std::old_io::MemReader::new(rest);
                         let extensions: $t = try!(TlsItem::tls_read(&mut rest_reader));
                         Ok(Some(extensions))
                     }

@@ -1,5 +1,6 @@
 use std::error::{Error, FromError};
-use std::io::IoError;
+use std::old_io::IoError;
+use std::fmt;
 
 #[derive(Copy, PartialEq, Show)]
 pub enum TlsErrorKind {
@@ -51,10 +52,12 @@ impl Error for TlsError {
             TlsErrorKind::AlertReceived => "received an alert",
         }
     }
+}
 
-    fn detail(&self) -> Option<String> {
-        Some(self.desc.clone())
-    }
+impl fmt::String for TlsError {
+	fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+		return formatter.write_str(self.description());
+	}
 }
 
 impl FromError<IoError> for TlsError {

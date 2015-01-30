@@ -1,5 +1,5 @@
 use std::rand::{Rng, OsRng};
-use std::io::BufReader;
+use std::old_io::BufReader;
 
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::IllegalParameter;
