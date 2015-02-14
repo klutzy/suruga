@@ -1,4 +1,4 @@
-use std::rand::OsRng;
+use rand::OsRng;
 
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::UnexpectedMessage;
@@ -40,7 +40,7 @@ macro_rules! cipher_suite {
         $id:ident = $kex:ident, $cipher:ident, $mac:ident, $v1:expr, $v2:expr;
     )+) => (
         #[allow(non_camel_case_types)]
-        #[derive(Copy, PartialEq, Show)]
+        #[derive(Copy, PartialEq, Debug)]
         pub enum CipherSuite {
             $(
                 $id,

@@ -1,6 +1,6 @@
-use std::io::{MemReader, ByRefReader, ByRefWriter};
-use std::rand::OsRng;
+use std::old_io::{MemReader, ByRefReader, ByRefWriter};
 use std::iter::repeat;
+use rand::OsRng;
 
 use tls::Tls;
 use tls_result::TlsResult;

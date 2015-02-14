@@ -1,8 +1,8 @@
-use std::io::net::tcp::TcpStream;
+use std::old_io::net::tcp::TcpStream;
 use std::slice::bytes::copy_memory;
 use std::cmp;
-use std::io::{IoResult, IoError, OtherIoError};
-use std::rand::{Rng, OsRng};
+use std::old_io::{IoResult, IoError, OtherIoError};
+use rand::{Rng, OsRng};
 
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{UnexpectedMessage, InternalError, DecryptError, IllegalParameter};
@@ -192,7 +192,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                 // ideally we may save "raw" packet data..
                 let mut serv_msgs = Vec::new();
                 // FIXME: this should not throw "io error".. should throw "internal error"
-                try!(serv_msgs.write(&msgs[]));
+                try!(serv_msgs.write_all(&msgs[]));
                 try!(finished.tls_write(&mut serv_msgs));
 
                 let verify_hash = sha256(&serv_msgs[]);
@@ -238,7 +238,7 @@ impl TlsClient<TcpStream, TcpStream> {
 
 impl<R: Reader, W: Writer> Writer for TlsClient<R, W> {
     // if ssl connection is failed, return `EndOfFile`.
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         let result = self.tls.writer.write_application_data(buf);
         match result {
             Ok(()) => Ok(()),

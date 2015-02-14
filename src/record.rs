@@ -14,7 +14,7 @@ use self::Message::{HandshakeMessage, ChangeCipherSpecMessage, AlertMessage,
                     ApplicationDataMessage};
 
 #[repr(u8)]
-#[derive(Copy, PartialEq, FromPrimitive, Show)]
+#[derive(Copy, PartialEq, FromPrimitive, Debug)]
 pub enum ContentType {
     ChangeCipherSpecTy = 20,
     AlertTy = 21,
@@ -136,7 +136,7 @@ impl<W: Writer> RecordWriter<W> {
         try!(self.writer.write_u8(minor));
 
         try!(self.writer.write_be_u16(fragment_len));
-        try!(self.writer.write(&*enc_record.fragment));
+        try!(self.writer.write_all(&*enc_record.fragment));
 
         self.write_count += 1;
 

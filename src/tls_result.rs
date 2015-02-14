@@ -1,7 +1,8 @@
 use std::error::{Error, FromError};
-use std::io::IoError;
+use std::old_io::IoError;
+use std::fmt;
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum TlsErrorKind {
     // corresponds to alert messages
 
@@ -18,7 +19,7 @@ pub enum TlsErrorKind {
     AlertReceived,
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct TlsError {
     pub kind: TlsErrorKind,
     pub desc: String,
@@ -51,10 +52,6 @@ impl Error for TlsError {
             TlsErrorKind::AlertReceived => "received an alert",
         }
     }
-
-    fn detail(&self) -> Option<String> {
-        Some(self.desc.clone())
-    }
 }
 
 impl FromError<IoError> for TlsError {
@@ -63,6 +60,12 @@ impl FromError<IoError> for TlsError {
             kind: TlsErrorKind::IoFailure,
             desc: format!("io error: {}", err),
         }
+    }
+}
+
+impl fmt::Display for TlsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 
