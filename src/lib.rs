@@ -4,10 +4,13 @@
 #![allow(missing_copy_implementations)]
 
 #![feature(slicing_syntax)]
-#![allow(unstable)]
+#![feature(core)]
+#![feature(io)]
+#![feature(collections)]
 
 #[macro_use]
 extern crate log;
+extern crate rand;
 
 pub use tls::Tls;
 pub use client::TlsClient;

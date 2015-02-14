@@ -383,7 +383,7 @@ macro_rules! tls_option {
                             return Ok(None);
                         }
 
-                        let mut rest_reader = ::std::io::MemReader::new(rest);
+                        let mut rest_reader = ::std::old_io::MemReader::new(rest);
                         let extensions: $t = try!(TlsItem::tls_read(&mut rest_reader));
                         Ok(Some(extensions))
                     }
@@ -422,7 +422,7 @@ pub struct ObscureData(Vec<u8>);
 
 impl TlsItem for ObscureData {
     fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
-        try!(writer.write(&self.0[]));
+        try!(writer.write_all(&self.0[]));
         Ok(())
     }
 

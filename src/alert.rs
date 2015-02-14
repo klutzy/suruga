@@ -9,7 +9,7 @@ tls_enum!(u8, enum AlertLevel {
 
 // A.3. Alert Messages
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
-tls_enum!(u8, #[derive(Show)] enum AlertDescription {
+tls_enum!(u8, #[derive(Debug)] enum AlertDescription {
     close_notify(0),
     unexpected_message(10),
     bad_record_mac(20),

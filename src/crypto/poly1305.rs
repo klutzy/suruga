@@ -343,7 +343,7 @@ mod test {
         }
     }
 
-    impl ::std::fmt::Show for Int1305 {
+    impl ::std::fmt::Debug for Int1305 {
         fn fmt(&self, a: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
             (self.v[]).fmt(a)
         }

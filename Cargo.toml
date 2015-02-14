@@ -7,3 +7,4 @@ authors = ["klutzytheklutzy@gmail.com"]
 [dependencies]
 
 log = "*"
+rand = "*"

@@ -1,4 +1,4 @@
-use std::rand::OsRng;
+use rand::OsRng;
 
 use tls_result::{TlsResult, TlsError, TlsErrorKind};
 use record::{RecordWriter, RecordReader};
