@@ -8,13 +8,14 @@ NIST P-256 [ECDHE][tls-ecc] and [chacha20-poly1305][tls-chacha20-poly1305].
 ```Rust
 extern crate suruga;
 
-use std::io::net::tcp::TcpStream;
+use std::old_io::net::tcp::TcpStream;
+use std::vec::Vec;
 
 fn main() {
-    let stream = TcpStream::connect("www.google.com", 443).unwrap();
+    let stream = TcpStream::connect("www.google.com:443").unwrap();
     let mut client = suruga::TlsClient::from_tcp(stream).unwrap();
     client.write(b"GET / HTTP/1.1\r\nHost: www.google.com\r\n\r\n").unwrap();
-    let mut msg = Vec::from_elem(100, 0u8);
+    let mut msg = vec![0u8; 100];
     client.read(msg.as_mut_slice()).unwrap();
     let msg = String::from_utf8_lossy(msg.as_slice());
     println!("msg: {}", msg);
