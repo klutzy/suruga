@@ -258,7 +258,7 @@ impl<R: Reader, W: Writer> Writer for TlsClient<R, W> {
 impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
     // if ssl connection is failed, return `EndOfFile`.
     fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
-        let mut pos = 0us;
+        let mut pos: usize = 0;
         let len = buf.len();
         while pos < len {
             let remaining = len - pos;

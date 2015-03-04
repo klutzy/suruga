@@ -45,7 +45,7 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
     }
 
     let bitlen = (len as u64) * 8; // FIXME: is overflow intended in spec?
-    for i in (0us..8us).rev() {
+    for i in (0..8).rev() {
         let b = (bitlen >> (8 * i)) as u8;
         msg.push(b);
     }
@@ -59,7 +59,7 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
     for i in (0..nblk) {
         let w = {
             let mut w = [0u32; 64];
-            for j in 0..16us {
+            for j in 0..16 {
                 let b0 = msg[i * 64 + j * 4 + 0] as u32;
                 let b1 = msg[i * 64 + j * 4 + 1] as u32;
                 let b2 = msg[i * 64 + j * 4 + 2] as u32;
@@ -67,7 +67,7 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
                 w[j] = (b0 << 8 * 3) | (b1 << 8 * 2) | (b2 << 8 * 1) | b3;
             }
 
-            for j in 16..64us {
+            for j in 16..64 {
                 let wj15 = w[j - 15];
                 let sig0 = rot(wj15, 7) ^ rot(wj15, 18) ^ (wj15 >> 3);
 
@@ -88,7 +88,7 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
         let mut g: u32 = val[6];
         let mut h: u32 = val[7];
 
-        for j in 0..64us {
+        for j in 0..64 {
             let ch = (e & f) ^ ((!e) & g);
             let maj = (a & b) ^ (a & c) ^ (b & c);
 
@@ -120,7 +120,7 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
     }
 
     let mut ret = [0u8; 32];
-    for i in 0..8us {
+    for i in 0..8 {
         ret[i * 4 + 0] = (val[i] >> 8 * 3) as u8;
         ret[i * 4 + 1] = (val[i] >> 8 * 2) as u8;
         ret[i * 4 + 2] = (val[i] >> 8 * 1) as u8;

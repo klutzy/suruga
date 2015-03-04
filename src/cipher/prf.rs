@@ -15,7 +15,7 @@ pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
 
     let mut i_msg = [0x36u8; B].to_vec();
     let mut o_msg = [0x5cu8; B].to_vec();
-    for i in (0us..key.len()) {
+    for i in (0..key.len()) {
         i_msg[i] ^= key[i];
         o_msg[i] ^= key[i];
     }
@@ -137,7 +137,7 @@ mod test {
         let ret1 = {
             let mut prf = Prf::new(Vec::new(), Vec::new());
             let mut ret = Vec::new();
-            for _ in 0us..100 {
+            for _ in 0..100 {
                 ret.push_all(&prf.get_bytes(1));
             }
             ret
