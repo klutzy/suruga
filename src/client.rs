@@ -101,7 +101,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // we always use server key exchange
         let server_key_ex_data = expect!(server_key_exchange);
         let kex = cipher_suite.new_kex();
-        let (key_data, pre_master_secret) = try!(kex.compute_keys(&*server_key_ex_data,
+        let (key_data, pre_master_secret) = try!(kex.compute_keys(&server_key_ex_data,
                                                                   &mut self.tls.rng));
 
         expect!(server_hello_done);
@@ -114,8 +114,8 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // SECRET
         let master_secret = {
             let mut label_seed = b"master secret".to_vec();
-            label_seed.push_all(&*cli_random);
-            label_seed.push_all(&*server_hello_data.random);
+            label_seed.push_all(&cli_random);
+            label_seed.push_all(&server_hello_data.random);
 
             let mut prf = Prf::new(pre_master_secret, label_seed);
             prf.get_bytes(48)
@@ -126,8 +126,8 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // SECRET
         let read_key = {
             let mut label_seed = b"key expansion".to_vec();
-            label_seed.push_all(&*server_hello_data.random);
-            label_seed.push_all(&*cli_random);
+            label_seed.push_all(&server_hello_data.random);
+            label_seed.push_all(&cli_random);
 
             let mut prf = Prf::new(master_secret.clone(), label_seed);
 

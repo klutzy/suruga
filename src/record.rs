@@ -119,7 +119,7 @@ impl<W: Writer> RecordWriter<W> {
                 ad.push(frag_len as u8);
 
                 let encrypted_fragment = encryptor.encrypt(&seq_num,
-                                                           &*record.fragment,
+                                                           &record.fragment,
                                                            &ad);
                 EncryptedRecord::new(record.content_type,
                                      record.ver_major,
@@ -136,7 +136,7 @@ impl<W: Writer> RecordWriter<W> {
         try!(self.writer.write_u8(minor));
 
         try!(self.writer.write_be_u16(fragment_len));
-        try!(self.writer.write_all(&*enc_record.fragment));
+        try!(self.writer.write_all(&enc_record.fragment));
 
         self.write_count += 1;
 
@@ -258,7 +258,7 @@ impl<R: Reader> RecordReader<R> {
 
                 // TODO: "seq_num as nonce" is chacha20poly1305-specific
                 let data = try!(decryptor.decrypt(&seq_num,
-                                                  &*enc_record.fragment,
+                                                  &enc_record.fragment,
                                                   &ad));
 
                 Record::new(enc_record.content_type,
