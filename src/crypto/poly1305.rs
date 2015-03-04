@@ -339,13 +339,13 @@ mod test {
 
     impl PartialEq for Int1305 {
         fn eq(&self, b: &Int1305) -> bool {
-            self.normalize().v[] == b.normalize().v[]
+            self.normalize().v == b.normalize().v
         }
     }
 
     impl ::std::fmt::Debug for Int1305 {
         fn fmt(&self, a: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-            (self.v[]).fmt(a)
+            (self.v).fmt(a)
         }
     }
 
@@ -370,13 +370,13 @@ mod test {
     #[test]
     fn test_normalize() {
         let p = Int1305 { v: [0x3fffffb, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff] };
-        assert_eq!(&p.normalize().v[], &super::ZERO.v[]);
+        assert_eq!(&p.normalize().v, &super::ZERO.v);
 
         let large = Int1305 { v: [0, 10, 5, 10, 1 << 26] };
         let small = Int1305 { v: [5, 10, 5, 10, 0] };
 
-        assert_eq!(&large.normalize().v[], &small.v[]);
-        assert_eq!(&small.normalize().v[], &small.v[]);
+        assert_eq!(&large.normalize().v, &small.v);
+        assert_eq!(&small.normalize().v, &small.v);
 
         for a in COEFFS.iter() {
             assert_eq!(a.normalize(), *a);
@@ -451,7 +451,7 @@ mod test {
 
         for &(msg, ref r, ref aes, ref expected) in VALUES.iter() {
             let output = super::authenticate(msg, r, aes);
-            assert_eq!(&output[], &expected[]);
+            assert_eq!(&output[..], &expected[..]);
         }
     }
 }

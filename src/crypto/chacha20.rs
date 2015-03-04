@@ -160,8 +160,8 @@ mod test {
     fn check_keystream(key: &[u8], nonce: &[u8], keystream: &[u8]) {
         let mut chacha = ChaCha20::new(key, nonce);
         let input: Vec<_> = repeat(0u8).take(keystream.len()).collect();
-        let output = chacha.encrypt(&input[]);
-        assert_eq!(&output[], keystream);
+        let output = chacha.encrypt(&input);
+        assert_eq!(&output[..], keystream);
     }
 
     #[test]

@@ -71,7 +71,7 @@ fn test_application_message() {
     {
         let mut reader = MemReader::new(Vec::new());
         let mut tls = null_tls(reader.by_ref(), writer.by_ref());
-        tls.writer.write_application_data(&app_data[]).unwrap();
+        tls.writer.write_application_data(&app_data).unwrap();
     }
 
     let data = writer;
@@ -83,7 +83,7 @@ fn test_application_message() {
         let msg = tls.reader.read_message().unwrap();
         match msg {
             ApplicationDataMessage(msg) => {
-                assert_eq!(msg, &[1u8; RECORD_MAX_LEN][]);
+                assert_eq!(msg, &[1u8; RECORD_MAX_LEN][..]);
             },
             _ => panic!(),
         }
@@ -91,7 +91,7 @@ fn test_application_message() {
         let msg = tls.reader.read_message().unwrap();
         match msg {
             ApplicationDataMessage(msg) => {
-                assert_eq!(msg, &[1u8; 200][]);
+                assert_eq!(msg, &[1u8; 200][..]);
             },
             _ => panic!(),
         }

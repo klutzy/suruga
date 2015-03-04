@@ -208,7 +208,7 @@ macro_rules! tls_array {
 
         impl TlsItem for $name {
             fn tls_write<W: Writer>(&self, writer: &mut W) -> $crate::tls_result::TlsResult<()> {
-                try!(writer.write(&self.0[]));
+                try!(writer.write(&self.0));
                 Ok(())
             }
 
@@ -225,7 +225,7 @@ macro_rules! tls_array {
         impl ::std::ops::Deref for $name {
             type Target = [u8];
             fn deref<'a>(&'a self) -> &'a [u8] {
-                &self.0[]
+                &self.0
             }
         }
     )
@@ -355,7 +355,7 @@ macro_rules! tls_vec {
         impl ::std::ops::Deref for $name {
             type Target = [$item_ty];
             fn deref<'a>(&'a self) -> &'a [$item_ty] {
-                &self.0[]
+                &self.0
             }
         }
     )
@@ -422,7 +422,7 @@ pub struct ObscureData(Vec<u8>);
 
 impl TlsItem for ObscureData {
     fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
-        try!(writer.write_all(&self.0[]));
+        try!(writer.write_all(&self.0));
         Ok(())
     }
 
@@ -448,6 +448,6 @@ impl ObscureData {
 impl ::std::ops::Deref for ObscureData {
     type Target = [u8];
     fn deref<'a>(&'a self) -> &'a [u8] {
-        &self.0[]
+        &self.0
     }
 }

@@ -110,7 +110,7 @@ impl<W: Writer> RecordWriter<W> {
                 let seq_num = u64_be_array(self.write_count);
 
                 let mut ad = Vec::new();
-                ad.push_all(&seq_num[]);
+                ad.push_all(&seq_num);
                 ad.push(record.content_type as u8);
                 ad.push(record.ver_major);
                 ad.push(record.ver_minor);
@@ -118,9 +118,9 @@ impl<W: Writer> RecordWriter<W> {
                 ad.push((frag_len >> 8) as u8);
                 ad.push(frag_len as u8);
 
-                let encrypted_fragment = encryptor.encrypt(&seq_num[],
+                let encrypted_fragment = encryptor.encrypt(&seq_num,
                                                            &*record.fragment,
-                                                           &ad[]);
+                                                           &ad);
                 EncryptedRecord::new(record.content_type,
                                      record.ver_major,
                                      record.ver_minor,
@@ -158,13 +158,13 @@ impl<W: Writer> RecordWriter<W> {
     pub fn write_handshake(&mut self, handshake: &Handshake) -> TlsResult<()> {
         let mut data = Vec::new();
         try!(handshake.tls_write(&mut data));
-        self.write_data(HandshakeTy, &data[])
+        self.write_data(HandshakeTy, &data)
     }
 
     pub fn write_alert(&mut self, alert: &Alert) -> TlsResult<()> {
         let mut data = Vec::new();
         try!(alert.tls_write(&mut data));
-        self.write_data(AlertTy, &data[])
+        self.write_data(AlertTy, &data)
     }
 
     pub fn write_change_cipher_spec(&mut self) -> TlsResult<()> {
@@ -242,7 +242,7 @@ impl<R: Reader> RecordReader<R> {
                 let seq_num = u64_be_array(self.read_count);
 
                 let mut ad = Vec::new();
-                ad.push_all(&seq_num[]);
+                ad.push_all(&seq_num);
                 ad.push(enc_record.content_type as u8); // TLSCompressed.type
                 ad.push(enc_record.ver_major);
                 ad.push(enc_record.ver_minor);
@@ -257,9 +257,9 @@ impl<R: Reader> RecordReader<R> {
                 ad.push(frag_len as u8);
 
                 // TODO: "seq_num as nonce" is chacha20poly1305-specific
-                let data = try!(decryptor.decrypt(&seq_num[],
+                let data = try!(decryptor.decrypt(&seq_num,
                                                   &*enc_record.fragment,
-                                                  &ad[]));
+                                                  &ad));
 
                 Record::new(enc_record.content_type,
                             enc_record.ver_major,

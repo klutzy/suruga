@@ -149,7 +149,7 @@ mod test {
 
         for &(input, expected) in ANSWERS.iter() {
             let computed = sha256(input);
-            assert_eq!(expected, &computed[]);
+            assert_eq!(expected, &computed);
         }
     }
 }

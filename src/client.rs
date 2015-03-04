@@ -166,13 +166,13 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // can be broken into several records. This leads to alert attack.
         // since we don't accept strange alerts, all "normal" alert messages are
         // treated as error, so now we can assert that we haven't received alerts.
-        let verify_hash = sha256(&msgs[]);
+        let verify_hash = sha256(&msgs);
 
         let client_verify_data = {
             let finished_label = b"client finished";
 
             let mut label_seed = finished_label.to_vec();
-            label_seed.push_all(&verify_hash[]);
+            label_seed.push_all(&verify_hash);
             let mut prf = Prf::new(master_secret.clone(), label_seed);
             prf.get_bytes(cipher_suite.verify_data_len())
         };
@@ -192,10 +192,10 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                 // ideally we may save "raw" packet data..
                 let mut serv_msgs = Vec::new();
                 // FIXME: this should not throw "io error".. should throw "internal error"
-                try!(serv_msgs.write_all(&msgs[]));
+                try!(serv_msgs.write_all(&msgs));
                 try!(finished.tls_write(&mut serv_msgs));
 
-                let verify_hash = sha256(&serv_msgs[]);
+                let verify_hash = sha256(&serv_msgs);
                 verify_hash
             };
 
@@ -203,13 +203,13 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                 let finished_label = b"server finished";
 
                 let mut label_seed = finished_label.to_vec();
-                label_seed.push_all(&verify_hash[]);
+                label_seed.push_all(&verify_hash);
                 let mut prf = Prf::new(master_secret, label_seed);
                 prf.get_bytes(cipher_suite.verify_data_len())
             };
 
-            let verify_ok = crypto_compare(&server_finished[],
-                                           &server_verify_data[]);
+            let verify_ok = crypto_compare(&server_finished,
+                                           &server_verify_data);
             if !verify_ok {
                 return tls_err!(DecryptError, "server sent wrong verify data");
             }
@@ -269,7 +269,7 @@ impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
                         break; // FIXME: stop if EOF. otherwise raise error?
                     }
                 };
-                self.buf.push_all(&data[]);
+                self.buf.push_all(&data);
             }
 
             let selflen = self.buf.len();

@@ -21,9 +21,9 @@ pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
     }
 
     i_msg.push_all(msg);
-    let h_i = sha256(&i_msg[]);
-    o_msg.push_all(&h_i[]);
-    let h_o = sha256(&o_msg[]);
+    let h_i = sha256(&i_msg);
+    o_msg.push_all(&h_i);
+    let h_o = sha256(&o_msg);
 
     h_o
 }
@@ -37,7 +37,7 @@ pub struct Prf {
 
 impl Prf {
     pub fn new(secret: Vec<u8>, seed: Vec<u8>) -> Prf {
-        let a1 = hmac_sha256(&secret[], &seed[]);
+        let a1 = hmac_sha256(&secret, &seed);
 
         Prf {
             secret: secret,
@@ -50,9 +50,9 @@ impl Prf {
     // get 32-byte pseudorandom number.
     fn next_block(&mut self) -> [u8; 32] {
         let mut input = self.a.to_vec();
-        input.push_all(&self.seed[]);
-        let next = hmac_sha256(&self.secret[], &input[]);
-        self.a = hmac_sha256(&self.secret[], &self.a[]);
+        input.push_all(&self.seed);
+        let next = hmac_sha256(&self.secret, &input);
+        self.a = hmac_sha256(&self.secret, &self.a);
 
         next
     }
@@ -78,7 +78,7 @@ impl Prf {
             let next_block = self.next_block();
             let slice_len = size - ret.len();
             if slice_len > 32 {
-                ret.push_all(&next_block[]);
+                ret.push_all(&next_block);
             } else {
                 ret.push_all(&next_block[..slice_len]);
                 self.buf = next_block[slice_len..].to_vec();
@@ -128,7 +128,7 @@ mod test {
 
         for &(key, input, expected) in VALUES.iter() {
             let actual = hmac_sha256(key, input);
-            assert_eq!(&actual[], expected);
+            assert_eq!(&actual, expected);
         }
     }
 
@@ -138,7 +138,7 @@ mod test {
             let mut prf = Prf::new(Vec::new(), Vec::new());
             let mut ret = Vec::new();
             for _ in 0us..100 {
-                ret.push_all(&prf.get_bytes(1)[]);
+                ret.push_all(&prf.get_bytes(1));
             }
             ret
         };
@@ -153,8 +153,8 @@ mod test {
         let ret3 = {
             let mut prf = Prf::new(Vec::new(), Vec::new());
             let mut b = prf.get_bytes(33);
-            b.push_all(&prf.get_bytes(33)[]);
-            b.push_all(&prf.get_bytes(100 - 33 * 2)[]);
+            b.push_all(&prf.get_bytes(33));
+            b.push_all(&prf.get_bytes(100 - 33 * 2));
             b
         };
 

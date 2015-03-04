@@ -262,8 +262,8 @@ impl NPoint256 {
         // 0x04 || self.x (big endian) || self.y (big endian)
         let mut b = Vec::with_capacity(1 + (256 / 8) * 2);
         b.push(0x04); // uncompressed
-        b.push_all(&self.x.to_bytes()[]);
-        b.push_all(&self.y.to_bytes()[]);
+        b.push_all(&self.x.to_bytes());
+        b.push_all(&self.y.to_bytes());
         b
     }
 }
@@ -606,13 +606,13 @@ pub mod int256 {
 
         impl PartialEq for Int256 {
             fn eq(&self, b: &Int256) -> bool {
-                self.v[] == b.v[]
+                self.v == b.v
             }
         }
 
         impl ::std::fmt::Debug for Int256 {
             fn fmt(&self, a: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                self.v[].fmt(a)
+                self.v.fmt(a)
             }
         }
 
@@ -766,7 +766,7 @@ pub mod int256 {
         fn test_from_bytes() {
             for a in VALUES_256.iter() {
                 let b = a.to_bytes();
-                let aa = Int256::from_bytes(&b[]).expect("to_bytes failed");
+                let aa = Int256::from_bytes(&b).expect("to_bytes failed");
                 assert_eq!(*a, aa);
             }
         }
