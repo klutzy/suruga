@@ -52,7 +52,7 @@ macro_rules! cipher_suite {
             pub fn new_aead(&self) -> Box<Aead> {
                 match *self {
                     $(
-                        CipherSuite::$id => box $cipher as Box<Aead>,
+                        CipherSuite::$id => Box::new($cipher) as Box<Aead>,
                     )+
                     CipherSuite::UnknownCipherSuite => unreachable!(),
                 }
@@ -61,7 +61,7 @@ macro_rules! cipher_suite {
             pub fn new_kex(&self) -> Box<KeyExchange> {
                 match *self {
                     $(
-                        CipherSuite::$id => box $kex as Box<KeyExchange>,
+                        CipherSuite::$id => Box::new($kex) as Box<KeyExchange>,
                     )+
                     CipherSuite::UnknownCipherSuite => unreachable!(),
                 }
