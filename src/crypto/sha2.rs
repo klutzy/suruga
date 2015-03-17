@@ -2,10 +2,7 @@
 // not seriously audited.
 // no bit-level support. sorry
 
-const INIT_VAL: [u32; 8] = [
-    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-    0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
-];
+use crypto::wrapping::*;
 
 static K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -18,35 +15,23 @@ static K: [u32; 64] = [
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 ];
 
-
-macro_rules! be_u32 {
-    // warning: $e is byte-oriented offset
-    ($a:ident[$e:expr]) => ({
-        let e = $e;
-        let b0 = $a[e + 0] as u32;
-        let b1 = $a[e + 1] as u32;
-        let b2 = $a[e + 2] as u32;
-        let b3 = $a[e + 3] as u32;
-        (b0 << 8 * 3) | (b1 << 8 * 2) | (b2 << 8 * 1) | b3
-    })
-}
-
 pub fn sha256(msg: &[u8]) -> [u8; 32] {
-    fn rot(a: u32, b: usize) -> u32 {
+    fn rot(a: w32, b: usize) -> w32 {
         (a >> b) | (a << (32 - b))
     }
 
     let len = msg.len();
-    let mut msg = msg.to_vec();
+    let mut msg = msg.to_vec(); // FIXME: do not allocate
 
     msg.push(0x80);
-    for _ in 0..((64 - 8 - 1 - len) & 63) {
+    let padding_len = (w64(64 - 8 - 1) - w64(len as u64)) & w64(63);
+    for _ in 0..(padding_len.0) {
         msg.push(0);
     }
 
-    let bitlen = (len as u64) * 8; // FIXME: is overflow intended in spec?
+    let bitlen = (len as u64) * 8; // FIXME: disallow `len >= 2^64 / 8`
     for i in (0..8).rev() {
-        let b = (bitlen >> (8 * i)) as u8;
+        let b = (w64(bitlen) >> (8 * i)).to_w8().0;
         msg.push(b);
     }
 
@@ -54,16 +39,19 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
 
     let nblk = msg.len() / (512 / 8);
 
-    let mut val = INIT_VAL;
+    let mut val: [w32; 8] = [
+        w32(0x6a09e667), w32(0xbb67ae85), w32(0x3c6ef372), w32(0xa54ff53a),
+        w32(0x510e527f), w32(0x9b05688c), w32(0x1f83d9ab), w32(0x5be0cd19),
+    ];
 
-    for i in (0..nblk) {
+    for i in 0..nblk {
         let w = {
-            let mut w = [0u32; 64];
+            let mut w = [w32(0u32); 64];
             for j in 0..16 {
-                let b0 = msg[i * 64 + j * 4 + 0] as u32;
-                let b1 = msg[i * 64 + j * 4 + 1] as u32;
-                let b2 = msg[i * 64 + j * 4 + 2] as u32;
-                let b3 = msg[i * 64 + j * 4 + 3] as u32;
+                let b0 = w8(msg[i * 64 + j * 4 + 0]).to_w32();
+                let b1 = w8(msg[i * 64 + j * 4 + 1]).to_w32();
+                let b2 = w8(msg[i * 64 + j * 4 + 2]).to_w32();
+                let b3 = w8(msg[i * 64 + j * 4 + 3]).to_w32();
                 w[j] = (b0 << 8 * 3) | (b1 << 8 * 2) | (b2 << 8 * 1) | b3;
             }
 
@@ -79,14 +67,14 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
             w
         };
 
-        let mut a: u32 = val[0];
-        let mut b: u32 = val[1];
-        let mut c: u32 = val[2];
-        let mut d: u32 = val[3];
-        let mut e: u32 = val[4];
-        let mut f: u32 = val[5];
-        let mut g: u32 = val[6];
-        let mut h: u32 = val[7];
+        let mut a: w32 = val[0];
+        let mut b: w32 = val[1];
+        let mut c: w32 = val[2];
+        let mut d: w32 = val[3];
+        let mut e: w32 = val[4];
+        let mut f: w32 = val[5];
+        let mut g: w32 = val[6];
+        let mut h: w32 = val[7];
 
         for j in 0..64 {
             let ch = (e & f) ^ ((!e) & g);
@@ -95,7 +83,7 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
             let sig0 = rot(a, 2) ^ rot(a, 13) ^ rot(a, 22);
             let sig1 = rot(e, 6) ^ rot(e, 11) ^ rot(e, 25);
 
-            let t1 = h + sig1 + ch + K[j] + w[j];
+            let t1 = h + sig1 + ch + w32(K[j]) + w[j];
             let t2 = sig0 + maj;
 
             h = g;
@@ -108,23 +96,22 @@ pub fn sha256(msg: &[u8]) -> [u8; 32] {
             a = t1 + t2;
         }
 
-        val[0] += a;
-        val[1] += b;
-        val[2] += c;
-        val[3] += d;
-        val[4] += e;
-        val[5] += f;
-        val[6] += g;
-        val[7] += h;
-
+        val[0] = val[0] + a;
+        val[1] = val[1] + b;
+        val[2] = val[2] + c;
+        val[3] = val[3] + d;
+        val[4] = val[4] + e;
+        val[5] = val[5] + f;
+        val[6] = val[6] + g;
+        val[7] = val[7] + h;
     }
 
     let mut ret = [0u8; 32];
     for i in 0..8 {
-        ret[i * 4 + 0] = (val[i] >> 8 * 3) as u8;
-        ret[i * 4 + 1] = (val[i] >> 8 * 2) as u8;
-        ret[i * 4 + 2] = (val[i] >> 8 * 1) as u8;
-        ret[i * 4 + 3] = val[i] as u8;
+        ret[i * 4 + 0] = (val[i] >> 8 * 3).to_w8().0;
+        ret[i * 4 + 1] = (val[i] >> 8 * 2).to_w8().0;
+        ret[i * 4 + 2] = (val[i] >> 8 * 1).to_w8().0;
+        ret[i * 4 + 3] = val[i].to_w8().0;
     }
     ret
 }
