@@ -2,6 +2,8 @@
 // http://www.nsa.gov/ia/_files/nist-routines.pdf
 // http://point-at-infinity.org/ecc/nisttv
 
+use crypto::wrapping::*;
+use crypto::wrapping::Wrapping as W;
 use self::int256::{Int256, ZERO, ONE};
 
 // Point on Y^2 = X^3 - 3 * X + B mod P256 where B is some obscure big number
@@ -16,19 +18,19 @@ pub struct Point256 {
 
 pub const G: Point256 = Point256 {
     x: Int256 {
-        v: [0xd898c296, 0xf4a13945, 0x2deb33a0, 0x77037d81,
-            0x63a440f2, 0xf8bce6e5, 0xe12c4247, 0x6b17d1f2]
+        v: [W(0xd898c296), W(0xf4a13945), W(0x2deb33a0), W(0x77037d81),
+            W(0x63a440f2), W(0xf8bce6e5), W(0xe12c4247), W(0x6b17d1f2)]
     },
     y: Int256 {
-        v: [0x37bf51f5, 0xcbb64068, 0x6b315ece, 0x2bce3357,
-            0x7c0f9e16, 0x8ee7eb4a, 0xfe1a7f9b, 0x4fe342e2]
+        v: [W(0x37bf51f5), W(0xcbb64068), W(0x6b315ece), W(0x2bce3357),
+            W(0x7c0f9e16), W(0x8ee7eb4a), W(0xfe1a7f9b), W(0x4fe342e2)]
     },
     z: ONE,
 };
 
 pub const B: Int256 = Int256 {
-    v: [0x27d2604b, 0x3bce3c3e, 0xcc53b0f6, 0x651d06b0,
-        0x769886bc, 0xb3ebbd55, 0xaa3a93e7, 0x5ac635d8]
+    v: [W(0x27d2604b), W(0x3bce3c3e), W(0xcc53b0f6), W(0x651d06b0),
+        W(0x769886bc), W(0xb3ebbd55), W(0xaa3a93e7), W(0x5ac635d8)]
 };
 
 const INFTY: Point256 = Point256 {
@@ -60,7 +62,7 @@ impl Point256 {
         }
     }
 
-    fn choose(flag: u32, a: &Point256, b: &Point256) -> Point256 {
+    fn choose(flag: w32, a: &Point256, b: &Point256) -> Point256 {
         let x = Int256::choose(flag, &a.x, &b.x);
         let y = Int256::choose(flag, &a.y, &b.y);
         let z = Int256::choose(flag, &a.z, &b.z);
@@ -178,7 +180,7 @@ impl Point256 {
         let double = self.double();
         let ret = Point256::choose(xdiff_nonzero | ydiff_nonzero, &double, &ret);
         // if self == -b, return INFTY
-        let ret = Point256::choose(xdiff_nonzero | (1 - ydiff_nonzero), &INFTY, &ret);
+        let ret = Point256::choose(xdiff_nonzero | (W(1) - ydiff_nonzero), &INFTY, &ret);
         // if self == INFTY, return b
         let ret = Point256::choose(self_is_zero, b, &ret);
         // if b == INFTY, return self
@@ -191,7 +193,7 @@ impl Point256 {
         let mut ret = INFTY.clone();
         for i in (0..7).rev() {
             for j in (0..8).rev() {
-                let bit = (n.v[i] >> j) & 1;
+                let bit = (n.v[i] >> j) & W(1);
 
                 let ret2 = ret.double();
                 let ret3 = ret2.add(self);
@@ -251,7 +253,7 @@ impl NPoint256 {
 
         let zero_if_same = lhs.compare(&rhs);
 
-        if zero_if_same != 0 {
+        if zero_if_same.0 != 0 {
             return None;
         }
 
@@ -269,22 +271,25 @@ impl NPoint256 {
 }
 
 pub mod int256 {
+    use crypto::wrapping::*;
+    use crypto::wrapping::Wrapping as W;
+
     const LIMBS: usize = 8;
 
     // 2^32-radix: value = v[0] + 2^32 v[1] + ... + 2^124 v[7]
     // value must be < P256
     #[derive(Copy)]
     pub struct Int256 {
-        pub v: [u32; LIMBS]
+        pub v: [W<u32>; LIMBS]
     }
 
     // P256 = 2^256 - 2^224 + 2^192 + 2^96 - 1
     pub const P256: Int256 = Int256 {
-        v: [0xffffffff, 0xffffffff, 0xffffffff, 0x00000000,
-            0x00000000, 0x00000000, 0x00000001, 0xffffffff]
+        v: [W(0xffffffff), W(0xffffffff), W(0xffffffff), W(0x00000000),
+            W(0x00000000), W(0x00000000), W(0x00000001), W(0xffffffff)]
     };
-    pub const ZERO: Int256 = Int256 { v: [0; LIMBS] };
-    pub const ONE: Int256 = Int256 { v: [1, 0, 0, 0, 0, 0, 0, 0] };
+    pub const ZERO: Int256 = Int256 { v: [W(0); LIMBS] };
+    pub const ONE: Int256 = Int256 { v: [W(1), W(0), W(0), W(0), W(0), W(0), W(0), W(0)] };
 
     impl Clone for Int256 {
         fn clone(&self) -> Int256 {
@@ -295,24 +300,24 @@ pub mod int256 {
     impl Int256 {
         // return 0 if self == b.
         // otherwise return 1.
-        pub fn compare(&self, b: &Int256) -> u32 {
-            let mut diff = 0u32;
-            for i in (0..LIMBS) {
-                diff |= self.v[i] ^ b.v[i];
+        pub fn compare(&self, b: &Int256) -> W<u32> {
+            let mut diff = W(0u32);
+            for i in 0..LIMBS {
+                diff = diff | self.v[i] ^ b.v[i];
             }
-            diff |= diff >> 16;
-            diff |= diff >> 8;
-            diff |= diff >> 4;
-            diff |= diff >> 2;
-            diff |= diff >> 1;
-            diff & 1
+            diff = diff | diff >> 16;
+            diff = diff | diff >> 8;
+            diff = diff | diff >> 4;
+            diff = diff | diff >> 2;
+            diff = diff | diff >> 1;
+            diff & W(1)
         }
 
         // if flag == 0, returns a
         // if flag == 1, returns b
-        pub fn choose(flag: u32, a: &Int256, b: &Int256) -> Int256 {
-            let mut v = [0; LIMBS];
-            for i in (0..LIMBS) {
+        pub fn choose(flag: W<u32>, a: &Int256, b: &Int256) -> Int256 {
+            let mut v = [W(0); LIMBS];
+            for i in 0..LIMBS {
                 v[i] = a.v[i] ^ (flag * (a.v[i] ^ b.v[i]));
             }
             Int256 { v: v }
@@ -322,48 +327,52 @@ pub mod int256 {
         // value = self + b mod 2^256
         // carry = if self + b < P256 { 0 } else { 1 }
         // i.e. self + b == value + 2^256 * carry
-        fn add_no_reduce(&self, b: &Int256) -> (Int256, u32) {
-            let mut v = Int256 { v: [0u32; LIMBS] };
+        fn add_no_reduce(&self, b: &Int256) -> (Int256, W<u32>) {
+            let mut v = ZERO;
 
             // invariant: carry <= 1
-            let mut carry = 0u64;
-            for i in (0..LIMBS) {
+            let mut carry = W(0u64);
+            for i in 0..LIMBS {
                 // add <= 2^33
-                let add = (self.v[i] as u64) + (b.v[i] as u64) + carry;
-                v.v[i] = add as u32;
+                let add = self.v[i].to_w64() + b.v[i].to_w64() + carry;
+                v.v[i] = add.to_w32();
                 carry = add >> 32;
             }
-            (v, carry as u32)
+            (v, carry.to_w32())
         }
 
         // return (value, carry) where
         // value = self - b mod 2^256
         // carry = if self > b { 0 } else { 1 }
         // i.e. self - b == value - 2^256 * carry
-        fn sub_no_reduce(&self, b: &Int256) -> (Int256, u32) {
-            let mut v = Int256 { v: [0u32; LIMBS] };
+        fn sub_no_reduce(&self, b: &Int256) -> (Int256, W<u32>) {
+            let mut v = Int256 { v: [W(0u32); LIMBS] };
 
             // invariant: carry_sub <= 1
-            let mut carry_sub = 0u64;
-            for i in (0..LIMBS) {
+            let mut carry_sub = W(0u64);
+            for i in 0..LIMBS {
                 // -2^32 <= sub <= 2^32
-                let sub = (self.v[i] as u64) - (b.v[i] as u64) - carry_sub;
+                let sub = self.v[i].to_w64() - b.v[i].to_w64() - carry_sub;
                 // if sub < 0, set carry_sub = 1 and sub += 2^32
                 carry_sub = sub >> 63;
-                v.v[i] = sub as u32;
+                v.v[i] = sub.to_w32();
             }
 
-            (v, carry_sub as u32)
+            (v, carry_sub.to_w32())
         }
 
         // input may not be reduced
         // precondition: `self + carry * 2^256 < 2 * P256`
         // return `(self + carry * 2^256) mod P256`
-        pub fn reduce_once(&self, carry: u32) -> Int256 {
+        pub fn reduce_once(&self, carry: W<u32>) -> Int256 {
             let (v, carry_sub) = self.sub_no_reduce(&P256);
-            debug_assert!(!(carry_sub == 0 && carry == 1)); // precondition violated
-            let choose_new = carry ^ (carry_sub as u32);
+            debug_assert!(!(carry_sub.0 == 0 && carry.0 == 1)); // precondition violated
+            let choose_new = carry ^ carry_sub;
             Int256::choose(choose_new, &v, self)
+        }
+
+        pub fn reduce_once_zero(&self) -> Int256 {
+            self.reduce_once(W(0))
         }
 
         pub fn add(&self, b: &Int256) -> Int256 {
@@ -381,52 +390,52 @@ pub mod int256 {
             let (v, carry_sub) = self.sub_no_reduce(b);
             // if self - b < 0, carry_sub == 1 and v == 2^256 + self - b
             let (v2, _carry_add) = v.add_no_reduce(&P256);
-            debug_assert!(!(_carry_add == 0 && carry_sub == 1));
-            Int256::choose(carry_sub as u32, &v, &v2)
+            debug_assert!(!(_carry_add.0 == 0 && carry_sub.0 == 1));
+            Int256::choose(carry_sub, &v, &v2)
         }
 
         pub fn mult(&self, b: &Int256) -> Int256 {
-            let mut w = [0u64; LIMBS * 2];
-            for i in (0..LIMBS) {
-                for j in (0..LIMBS) {
+            let mut w = [W(0u64); LIMBS * 2];
+            for i in 0..LIMBS {
+                for j in 0..LIMBS {
                     let ij = i + j;
-                    let v_ij = (self.v[i] as u64) * (b.v[j] as u64);
-                    let v_ij_low = (v_ij as u32) as u64;
+                    let v_ij = self.v[i].to_w64() * b.v[j].to_w64();
+                    let v_ij_low = v_ij.to_w32().to_w64();
                     let v_ij_high = v_ij >> 32;
                     let w_ij = w[ij] + v_ij_low;
-                    let w_ij_low = (w_ij as u32) as u64;
+                    let w_ij_low = w_ij.to_w32().to_w64();
                     let w_ij_high = v_ij_high + (w_ij >> 32);
                     w[ij] = w_ij_low;
-                    w[ij + 1] += w_ij_high;
+                    w[ij + 1] = w[ij + 1] + w_ij_high;
                 }
             }
 
-            let mut v = [0u32; LIMBS * 2];
-            let mut carry = 0u64;
+            let mut v = [W(0u32); LIMBS * 2];
+            let mut carry = W(0u64);
             for i in 0..(LIMBS * 2) {
                 let a = w[i] + carry;
-                v[i] = a as u32;
+                v[i] = a.to_w32();
                 carry = a >> 32;
             }
-            debug_assert_eq!(carry, 0);
+            debug_assert_eq!(carry.0, 0);
 
             let mut buf = ZERO;
-            for i in (0..LIMBS) {
+            for i in 0..LIMBS {
                 buf.v[i] = v[i];
             }
-            let t = buf.reduce_once(0);
+            let t = buf.reduce_once_zero();
 
             let mut buf = ZERO;
             for i in (0..5) {
                 buf.v[i + 3] = v[i + 11];
             }
-            let s1 = buf.reduce_once(0);
+            let s1 = buf.reduce_once_zero();
 
             let mut buf = ZERO;
             for i in (0..4) {
                 buf.v[i + 3] = v[i + 12];
             }
-            let s2 = buf.reduce_once(0);
+            let s2 = buf.reduce_once_zero();
 
             let mut buf = ZERO;
             for i in (0..3) {
@@ -434,7 +443,7 @@ pub mod int256 {
             }
             buf.v[6] = v[14];
             buf.v[7] = v[15];
-            let s3 = buf.reduce_once(0);
+            let s3 = buf.reduce_once_zero();
 
             let mut buf = ZERO;
             for i in (0..3) {
@@ -443,7 +452,7 @@ pub mod int256 {
             }
             buf.v[6] = v[13];
             buf.v[7] = v[8];
-            let s4 = buf.reduce_once(0);
+            let s4 = buf.reduce_once_zero();
 
             let mut buf = ZERO;
             for i in (0..3) {
@@ -451,7 +460,7 @@ pub mod int256 {
             }
             buf.v[6] = v[8];
             buf.v[7] = v[10];
-            let d1 = buf.reduce_once(0);
+            let d1 = buf.reduce_once_zero();
 
             let mut buf = ZERO;
             for i in (0..4) {
@@ -459,7 +468,7 @@ pub mod int256 {
             }
             buf.v[6] = v[9];
             buf.v[7] = v[11];
-            let d2 = buf.reduce_once(0);
+            let d2 = buf.reduce_once_zero();
 
             let mut buf = ZERO;
             for i in (0..3) {
@@ -467,7 +476,7 @@ pub mod int256 {
                 buf.v[i + 3] = v[i + 8];
             }
             buf.v[7] = v[12];
-            let d3 = buf.reduce_once(0);
+            let d3 = buf.reduce_once_zero();
 
             let mut buf = ZERO;
             for i in (0..3) {
@@ -476,7 +485,7 @@ pub mod int256 {
             buf.v[7] = v[13];
             buf.v[0] = v[14];
             buf.v[1] = v[15];
-            let d4 = buf.reduce_once(0);
+            let d4 = buf.reduce_once_zero();
 
             let r = t.add(&s1.double()).add(&s2.double()).add(&s3).add(&s4);
             let r = r.sub(&d1.add(&d2).add(&d3).add(&d4));
@@ -549,18 +558,18 @@ pub mod int256 {
         }
 
         pub fn divide_by_2(&self) -> Int256 {
-            let is_odd = self.v[0] & 1;
+            let is_odd = self.v[0] & W(1);
 
             let mut half_even = ZERO;
             for i in 0..(LIMBS - 1) {
-                half_even.v[i] = (self.v[i] >> 1) | ((self.v[i + 1] & 1) << 31);
+                half_even.v[i] = (self.v[i] >> 1) | ((self.v[i + 1] & W(1)) << 31);
             }
             half_even.v[LIMBS - 1] = self.v[LIMBS - 1] >> 1;
 
             let mut half_odd = ZERO;
             let (self_p, carry) = self.add_no_reduce(&P256);
             for i in 0..(LIMBS - 1) {
-                half_odd.v[i] = (self_p.v[i] >> 1) | ((self_p.v[i + 1] & 1) << 31);
+                half_odd.v[i] = (self_p.v[i] >> 1) | ((self_p.v[i + 1] & W(1)) << 31);
             }
             half_odd.v[LIMBS - 1] = (self_p.v[LIMBS - 1] >> 1) | (carry << 31);
             // we can assume half_odd < P256 since (self + P256) < P256 * 2
@@ -574,7 +583,7 @@ pub mod int256 {
             for i in (0..LIMBS) {
                 let vi = self.v[LIMBS - 1 - i];
                 for j in (0..4) {
-                    b[i * 4 + j] = (vi >> ((3 - j) * 8)) as u8;
+                    b[i * 4 + j] = (vi >> ((3 - j) * 8)).to_w8().0;
                 }
             }
 
@@ -589,9 +598,9 @@ pub mod int256 {
 
             let mut x = ZERO;
             for i in (0..LIMBS) {
-                let mut vi = 0u32;
+                let mut vi = w32(0);
                 for j in (0..4) {
-                    vi |= (b[i * 4 + j] as u32) << ((3 - j) * 8);
+                    vi = vi | w8(b[i * 4 + j]).to_w32() << ((3 - j) * 8);
                 }
                 x.v[LIMBS - 1 - i] = vi;
             }
@@ -603,6 +612,7 @@ pub mod int256 {
     #[cfg(test)]
     mod test {
         use super::{Int256, P256, ZERO, ONE};
+        use crypto::wrapping::Wrapping as W;
 
         impl PartialEq for Int256 {
             fn eq(&self, b: &Int256) -> bool {
@@ -612,7 +622,7 @@ pub mod int256 {
 
         impl ::std::fmt::Debug for Int256 {
             fn fmt(&self, a: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                self.v.fmt(a)
+                self.v.iter().map(|s| s.0).collect::<Vec<u32>>().fmt(a)
             }
         }
 
@@ -620,12 +630,13 @@ pub mod int256 {
         static VALUES_256: &'static [Int256] = &[
             ZERO,
             ONE,
-            Int256 { v: [2, 0, 0, 0, 0, 0, 0, 0] },
-            Int256 { v: [1; 8] },
-            Int256 { v: [0, 2, 0, 2, 0, 0, 0, 0] },
-            Int256 { v: [1, 2, 3, 4, 5, 6, 7, 8] },
-            Int256 { v: [0x0, 0x0, 0x0, 0x0, 0xffffffff, 0xffffffff, 0, 0xffffffff] },
-            Int256 { v: [0xfffffffe; 8] },
+            Int256 { v: [W(2), W(0), W(0), W(0), W(0), W(0), W(0), W(0)] },
+            Int256 { v: [W(1); 8] },
+            Int256 { v: [W(0), W(2), W(0), W(2), W(0), W(0), W(0), W(0)] },
+            Int256 { v: [W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8)] },
+            Int256 { v: [W(0x0), W(0x0), W(0x0), W(0x0),
+                         W(0xffffffff), W(0xffffffff), W(0), W(0xffffffff)] },
+            Int256 { v: [W(0xfffffffe); 8] },
         ];
 
         #[test]
@@ -633,9 +644,9 @@ pub mod int256 {
             for a in VALUES_256.iter() {
                 for b in VALUES_256.iter() {
                     if a == b {
-                        assert_eq!(a.compare(b), 0);
+                        assert_eq!(a.compare(b).0, 0);
                     } else {
-                        assert_eq!(a.compare(b), 1);
+                        assert_eq!(a.compare(b).0, 1);
                     }
                 }
             }
@@ -645,19 +656,20 @@ pub mod int256 {
         fn test_int256_reduce_once() {
             // FIXME more tests
 
-            assert_eq!(ZERO.reduce_once(0), ZERO);
-            assert_eq!(P256.reduce_once(0), ZERO);
+            assert_eq!(ZERO.reduce_once(W(0)), ZERO);
+            assert_eq!(P256.reduce_once(W(0)), ZERO);
 
             static P256P1: Int256 = Int256 {
-                v: [0, 0, 0, 1, 0, 0, 1, 0xffffffff]
+                v: [W(0), W(0), W(0), W(1), W(0), W(0), W(1), W(0xffffffff)]
             };
-            assert_eq!(P256P1.reduce_once(0), ONE);
+            assert_eq!(P256P1.reduce_once(W(0)), ONE);
 
             // 2^256 == 2^224 - 2^192 - 2^96 + 1
             let v = Int256 {
-                v: [1, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff, 0xfffffffe, 0]
+                v: [W(1), W(0), W(0), W(0xffffffff),
+                    W(0xffffffff), W(0xffffffff), W(0xfffffffe), W(0)]
             };
-            assert_eq!(ZERO.reduce_once(1), v);
+            assert_eq!(ZERO.reduce_once(W(1)), v);
         }
 
         #[test]
@@ -690,7 +702,7 @@ pub mod int256 {
                     assert_eq!(a.sub(b).add(b), *a);
 
                     let ab = a.sub(b);
-                    assert_eq!(ab.reduce_once(0), ab);
+                    assert_eq!(ab.reduce_once(W(0)), ab);
 
                     for c in VALUES_256.iter() {
                         let abc = ab.sub(c);
@@ -756,7 +768,7 @@ pub mod int256 {
         fn test_int256_divide_by_2() {
             for a in VALUES_256.iter() {
                 let a_half = a.divide_by_2();
-                assert_eq!(a_half, a_half.reduce_once(0));
+                assert_eq!(a_half, a_half.reduce_once(W(0)));
                 let a_half_2 = a_half.add(&a_half);
                 assert_eq!(*a, a_half_2);
             }

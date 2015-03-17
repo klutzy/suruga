@@ -1,6 +1,7 @@
 use rand::{Rng, OsRng};
 use std::old_io::BufReader;
 
+use crypto::wrapping::Wrapping as W;
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::IllegalParameter;
 use tls_item::TlsItem;
@@ -52,11 +53,11 @@ impl KeyExchange for EllipticDiffieHellman {
             loop {
                 let mut x = p256::int256::ZERO;
                 for i in 0..8 {
-                    x.v[i] = rng.next_u32();
+                    x.v[i] = W(rng.next_u32());
                 }
-                let xx = x.reduce_once(0);
+                let xx = x.reduce_once(W(0));
                 let x_is_okay = xx.compare(&x);
-                if x_is_okay == 0 {
+                if x_is_okay == W(0) {
                     return x;
                 }
             }
