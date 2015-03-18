@@ -1,3 +1,4 @@
+use std::io::prelude::*;
 use std::num::FromPrimitive;
 
 use tls_result::TlsResult;
@@ -5,6 +6,7 @@ use tls_result::TlsErrorKind::{UnexpectedMessage, RecordOverflow, BadRecordMac, 
 use alert::Alert;
 use handshake::{Handshake, HandshakeBuffer};
 use util::u64_be_array;
+use util::{ReadExt, WriteExt};
 use cipher::{Encryptor, Decryptor};
 use tls_item::TlsItem;
 use tls::TLS_VERSION;
@@ -79,14 +81,14 @@ impl EncryptedRecord {
     }
 }
 
-pub struct RecordWriter<W: Writer> {
+pub struct RecordWriter<W: Write> {
     writer: W,
     // if encryptor is None, handshake is not done yet.
     encryptor: Option<Box<Encryptor + 'static>>,
     write_count: u64,
 }
 
-impl<W: Writer> RecordWriter<W> {
+impl<W: Write> RecordWriter<W> {
     pub fn new(writer: W) -> RecordWriter<W> {
         RecordWriter {
             writer: writer,
@@ -186,7 +188,7 @@ pub enum Message {
     ApplicationDataMessage(Vec<u8>),
 }
 
-pub struct RecordReader<R: Reader> {
+pub struct RecordReader<R: ReadExt> {
     reader: R,
     // if decryptor is none, handshake is not done yet.
     decryptor: Option<Box<Decryptor + 'static>>,
@@ -194,7 +196,7 @@ pub struct RecordReader<R: Reader> {
     handshake_buffer: HandshakeBuffer,
 }
 
-impl<R: Reader> RecordReader<R> {
+impl<R: ReadExt> RecordReader<R> {
     pub fn new(reader: R) -> RecordReader<R> {
         RecordReader {
             reader: reader,

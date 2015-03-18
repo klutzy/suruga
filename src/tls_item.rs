@@ -1,20 +1,23 @@
+use std::io::prelude::*;
+
+use util::{ReadExt, WriteExt};
 use tls_result::TlsResult;
 
 pub trait TlsItem {
-    fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()>;
-    fn tls_read<R: Reader>(reader: &mut R) -> TlsResult<Self>;
+    fn tls_write<W: WriteExt>(&self, writer: &mut W) -> TlsResult<()>;
+    fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<Self>;
     fn tls_size(&self) -> u64;
 }
 
 macro_rules! tls_primitive {
     ($t:ident) => (
         impl TlsItem for $t {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
                 stry_write_num!($t, writer, *self);
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<$t> {
+            fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$t> {
                 let u = stry_read_num!($t, reader);
                 Ok(u)
             }
@@ -43,7 +46,7 @@ macro_rules! tls_struct {
         }
 
         impl TlsItem for $name {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
                 $(
                     try!(self.$item.tls_write(writer));
                 )+
@@ -51,7 +54,7 @@ macro_rules! tls_struct {
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
+            fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
                 $(
                     let $item: $t = try!(TlsItem::tls_read(reader));
                 )+
@@ -96,12 +99,12 @@ macro_rules! tls_enum {
         }
 
         impl TlsItem for $name {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
                 stry_write_num!($repr_ty, writer, *self);
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
+            fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
                 let num = stry_read_num!($repr_ty, reader) as u64;
                 let n: Option<$name> = ::std::num::FromPrimitive::from_u64(num);
                 match n {
@@ -149,7 +152,7 @@ macro_rules! tls_enum_struct {
         }
 
         impl TlsItem for $enum_name {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
                 match *self {
                     $(
                         $enum_name::$name(ref body) => {
@@ -161,7 +164,7 @@ macro_rules! tls_enum_struct {
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<$enum_name> {
+            fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$enum_name> {
                 let num = stry_read_num!($repr_ty, reader);
                 match num {
                     $(
@@ -207,12 +210,12 @@ macro_rules! tls_array {
         }
 
         impl TlsItem for $name {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> $crate::tls_result::TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> $crate::tls_result::TlsResult<()> {
                 try!(writer.write(&self.0));
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> $crate::tls_result::TlsResult<$name> {
+            fn tls_read<R: ReadExt>(reader: &mut R) -> $crate::tls_result::TlsResult<$name> {
                 let data = try!(reader.read_exact($n));
                 Ok($name(data))
             }
@@ -274,7 +277,7 @@ macro_rules! tls_vec {
         }
 
         impl TlsItem for $name {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
                 let len = self.data_size();
 
                 let size_max: u64 = $size_max;
@@ -298,7 +301,7 @@ macro_rules! tls_vec {
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
+            fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
                 let size_max: u64 = $size_max;
 
                 let self_size = if size_max < 1 << 8 {
@@ -365,7 +368,7 @@ macro_rules! tls_vec {
 macro_rules! tls_option {
     ($t:ty) => (
         impl TlsItem for Option<$t> {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
                 match *self {
                     Some(ref data) => {
                         try!(data.tls_write(writer));
@@ -375,26 +378,16 @@ macro_rules! tls_option {
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> ::tls_result::TlsResult<Option<$t>> {
-                let rest = reader.read_to_end();
-                match rest {
-                    Ok(rest) => {
-                        if rest.len() == 0 {
-                            return Ok(None);
-                        }
-
-                        let mut rest_reader = ::std::old_io::MemReader::new(rest);
-                        let extensions: $t = try!(TlsItem::tls_read(&mut rest_reader));
-                        Ok(Some(extensions))
-                    }
-                    Err(err) => {
-                        // read_to_end handles EndOfFile
-                        // FIXME isn't this internal and/or io error?
-                        return tls_err!(::tls_result::TlsErrorKind::DecodeError,
-                                        "failed to read extensions: {}",
-                                        err);
-                    }
+            fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<Option<$t>> {
+                let mut rest = vec![];
+                let len = try!(reader.read_to_end(&mut rest));
+                if len == 0 {
+                    return Ok(None);
                 }
+
+                let mut rest_reader = ::std::io::Cursor::new(rest);
+                let extensions: $t = try!(TlsItem::tls_read(&mut rest_reader));
+                Ok(Some(extensions))
             }
 
             fn tls_size(&self) -> u64 {
@@ -411,23 +404,23 @@ macro_rules! tls_option {
 pub struct DummyItem;
 
 impl TlsItem for DummyItem {
-    fn tls_write<W: Writer>(&self, _writer: &mut W) -> TlsResult<()> { Ok(()) }
-    fn tls_read<R: Reader>(_reader: &mut R) -> TlsResult<DummyItem> { Ok(DummyItem) }
+    fn tls_write<W: WriteExt>(&self, _writer: &mut W) -> TlsResult<()> { Ok(()) }
+    fn tls_read<R: ReadExt>(_reader: &mut R) -> TlsResult<DummyItem> { Ok(DummyItem) }
     fn tls_size(&self) -> u64 { 0 }
 }
 
-// this is not "opaque" vector - this is totally unknown and only meaningful for receiving.
-// it is assumed that the data is at the end of stream. (calls `Reader.read_to_end()`)
+// it is assumed that the data is at the end of stream. (calls `Read.read_to_end()`)
 pub struct ObscureData(Vec<u8>);
 
 impl TlsItem for ObscureData {
-    fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
+    fn tls_write<W: WriteExt>(&self, writer: &mut W) -> TlsResult<()> {
         try!(writer.write_all(&self.0));
         Ok(())
     }
 
-    fn tls_read<R: Reader>(reader: &mut R) -> TlsResult<ObscureData> {
-        let data = try!(reader.read_to_end());
+    fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<ObscureData> {
+        let mut data = vec![];
+        let _len = try!(reader.read_to_end(&mut data));
         Ok(ObscureData(data))
     }
 

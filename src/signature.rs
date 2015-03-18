@@ -1,5 +1,6 @@
 // 7.4.1.4.1 Signature algorithm
 
+use util::{ReadExt, WriteExt};
 use tls_item::TlsItem;
 
 tls_enum!(u8, enum HashAlgorithm {

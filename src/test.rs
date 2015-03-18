@@ -1,4 +1,5 @@
-use std::old_io::{MemReader, ByRefReader, ByRefWriter};
+use std::io::prelude::*;
+use std::io::Cursor;
 use std::iter::repeat;
 use rand::OsRng;
 
@@ -26,7 +27,7 @@ impl Decryptor for NullDecryptor {
     fn mac_len(&self) -> usize { 0 }
 }
 
-fn null_tls<R: Reader, W: Writer>(reader: R, writer: W) -> Tls<R, W> {
+fn null_tls<R: Read, W: Write>(reader: R, writer: W) -> Tls<R, W> {
     let mut tls = Tls::new(reader, writer, OsRng::new().unwrap());
 
     let null_encryptor = Box::new(NullEncryptor) as Box<Encryptor>;
@@ -41,8 +42,8 @@ fn null_tls<R: Reader, W: Writer>(reader: R, writer: W) -> Tls<R, W> {
 fn test_change_cipher_spec_message() {
     let mut writer = Vec::new();
     {
-        let mut reader = MemReader::new(Vec::new());
-        let mut tls = null_tls(reader.by_ref(), writer.by_ref());
+        let mut reader = Cursor::new(Vec::new());
+        let mut tls = null_tls(&mut reader, &mut writer);
         tls.writer.write_change_cipher_spec().unwrap();
     }
 
@@ -50,10 +51,10 @@ fn test_change_cipher_spec_message() {
     assert_eq!(data.len(), 1 + 2 + 2 + 1); // type, version, length, fragment
     assert_eq!(data[5], 1);
 
-    let mut reader = MemReader::new(data);
+    let mut reader = Cursor::new(data);
     {
         let mut writer = Vec::new();
-        let mut tls = null_tls(reader.by_ref(), writer.by_ref());
+        let mut tls = null_tls(&mut reader, &mut writer);
         let msg = tls.reader.read_message().unwrap();
         match msg {
             ChangeCipherSpecMessage => {},
@@ -69,17 +70,17 @@ fn test_application_message() {
 
     let mut writer = Vec::new();
     {
-        let mut reader = MemReader::new(Vec::new());
-        let mut tls = null_tls(reader.by_ref(), writer.by_ref());
+        let mut reader = Cursor::new(Vec::new());
+        let mut tls = null_tls(&mut reader, &mut writer);
         tls.writer.write_application_data(&app_data).unwrap();
     }
 
     let data = writer;
 
-    let mut reader = MemReader::new(data);
+    let mut reader = Cursor::new(data);
     {
         let mut writer = Vec::new();
-        let mut tls = null_tls(reader.by_ref(), writer.by_ref());
+        let mut tls = null_tls(&mut reader, &mut writer);
         let msg = tls.reader.read_message().unwrap();
         match msg {
             ApplicationDataMessage(msg) => {

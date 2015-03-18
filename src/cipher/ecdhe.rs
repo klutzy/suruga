@@ -1,7 +1,8 @@
+use std::io::Cursor;
 use rand::{Rng, OsRng};
-use std::old_io::BufReader;
 
 use crypto::wrapping::Wrapping as W;
+use util::{ReadExt, WriteExt};
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::IllegalParameter;
 use tls_item::TlsItem;
@@ -36,7 +37,7 @@ pub struct EllipticDiffieHellman;
 
 impl KeyExchange for EllipticDiffieHellman {
     fn compute_keys(&self, data: &[u8], rng: &mut OsRng) -> TlsResult<(Vec<u8>, Vec<u8>)> {
-        let mut reader = BufReader::new(data);
+        let mut reader = Cursor::new(data);
         let ecdh_params: EcdheServerKeyExchange = try!(TlsItem::tls_read(&mut reader));
 
         let gy = &ecdh_params.params.public;

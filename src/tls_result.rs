@@ -1,5 +1,5 @@
 use std::error::{Error, FromError};
-use std::old_io::IoError;
+use std::io;
 use std::fmt;
 
 #[derive(Copy, PartialEq, Debug)]
@@ -54,8 +54,8 @@ impl Error for TlsError {
     }
 }
 
-impl FromError<IoError> for TlsError {
-    fn from_error(err: IoError) -> TlsError {
+impl FromError<io::Error> for TlsError {
+    fn from_error(err: io::Error) -> TlsError {
         TlsError {
             kind: TlsErrorKind::IoFailure,
             desc: format!("io error: {}", err),
