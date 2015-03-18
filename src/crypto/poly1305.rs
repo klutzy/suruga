@@ -1,5 +1,7 @@
 // http://cr.yp.to/mac/poly1305-20050329.pdf
 
+use crypto::wrapping::*;
+
 macro_rules! choose_impl {
     ($s: ident, $t:ty, $($a:expr)+) => (
         impl $s {
@@ -229,10 +231,10 @@ pub fn authenticate(msg: &[u8], r: &[u8; 16], aes: &[u8; 16]) -> [u8; 16] {
     let h = {
         macro_rules! b {
             ($i:expr, $n:expr) => (
-                (h.v[$i] >> $n) as u8
+                Wrapping(h.v[$i] >> $n).to_w8().0
             );
             ($i:expr, $n:expr, $m:expr) => (
-                ((h.v[$i] >> $n) | (h.v[$i+1] & ((1 << $m) - 1)) << (8 - $m)) as u8
+                Wrapping((h.v[$i] >> $n) | (h.v[$i+1] & ((1 << $m) - 1)) << (8 - $m)).to_w8().0
             );
         }
 
@@ -294,10 +296,10 @@ pub fn authenticate(msg: &[u8], r: &[u8; 16], aes: &[u8; 16]) -> [u8; 16] {
 
         macro_rules! to_u8 {
             ($a:expr, $r:expr, $i:expr) => ({
-                $a[$i] = $r as u8;
-                $a[$i+1] = ($r >> 8) as u8;
-                $a[$i+2] = ($r >> 16) as u8;
-                $a[$i+3] = ($r >> 24) as u8;
+                $a[$i] = Wrapping($r).to_w8().0;
+                $a[$i+1] = Wrapping($r >> 8).to_w8().0;
+                $a[$i+2] = Wrapping($r >> 16).to_w8().0;
+                $a[$i+3] = Wrapping($r >> 24).to_w8().0;
             })
         }
 
@@ -339,13 +341,13 @@ mod test {
 
     impl PartialEq for Int1305 {
         fn eq(&self, b: &Int1305) -> bool {
-            self.normalize().v[] == b.normalize().v[]
+            self.normalize().v == b.normalize().v
         }
     }
 
     impl ::std::fmt::Debug for Int1305 {
         fn fmt(&self, a: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-            (self.v[]).fmt(a)
+            (self.v).fmt(a)
         }
     }
 
@@ -370,13 +372,13 @@ mod test {
     #[test]
     fn test_normalize() {
         let p = Int1305 { v: [0x3fffffb, 0x3ffffff, 0x3ffffff, 0x3ffffff, 0x3ffffff] };
-        assert_eq!(&p.normalize().v[], &super::ZERO.v[]);
+        assert_eq!(&p.normalize().v, &super::ZERO.v);
 
         let large = Int1305 { v: [0, 10, 5, 10, 1 << 26] };
         let small = Int1305 { v: [5, 10, 5, 10, 0] };
 
-        assert_eq!(&large.normalize().v[], &small.v[]);
-        assert_eq!(&small.normalize().v[], &small.v[]);
+        assert_eq!(&large.normalize().v, &small.v);
+        assert_eq!(&small.normalize().v, &small.v);
 
         for a in COEFFS.iter() {
             assert_eq!(a.normalize(), *a);
@@ -451,7 +453,7 @@ mod test {
 
         for &(msg, ref r, ref aes, ref expected) in VALUES.iter() {
             let output = super::authenticate(msg, r, aes);
-            assert_eq!(&output[], &expected[]);
+            assert_eq!(&output[..], &expected[..]);
         }
     }
 }

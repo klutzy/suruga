@@ -1,3 +1,4 @@
+use util::{ReadExt, WriteExt};
 use tls_result::{TlsResult, TlsError, TlsErrorKind};
 use tls_item::TlsItem;
 

@@ -1,21 +1,23 @@
 // http://cr.yp.to/chacha/chacha-20080128.pdf
 // http://cr.yp.to/chacha.html
 
+use crypto::wrapping::*;
+
 // convert $e.slice($i, $i + 4) into u32
 macro_rules! to_le_u32 {
     ($e:ident[$i:expr]) => ({
         let i: usize = $i;
-        let v1 = $e[i + 0] as u32;
-        let v2 = $e[i + 1] as u32;
-        let v3 = $e[i + 2] as u32;
-        let v4 = $e[i + 3] as u32;
+        let v1 = w8($e[i + 0]).to_w32();
+        let v2 = w8($e[i + 1]).to_w32();
+        let v3 = w8($e[i + 2]).to_w32();
+        let v4 = w8($e[i + 3]).to_w32();
         v1 | (v2 << 8) | (v3 << 16) | (v4 << 24)
     })
 }
 
 pub struct ChaCha20 {
     // SECRET
-    vals: [u32; 16],
+    vals: [w32; 16],
 }
 
 impl ChaCha20 {
@@ -24,21 +26,21 @@ impl ChaCha20 {
         assert_eq!(key.len(), 32);
         assert_eq!(nonce.len(), 8);
 
-        let mut vals = [0u32; 16];
+        let mut vals = [w32(0u32); 16];
 
         // "expand 32-byte k"
-        vals[0] = 0x61707865;
-        vals[1] = 0x3320646e;
-        vals[2] = 0x79622d32;
-        vals[3] = 0x6b206574;
+        vals[0] = w32(0x61707865);
+        vals[1] = w32(0x3320646e);
+        vals[2] = w32(0x79622d32);
+        vals[3] = w32(0x6b206574);
 
-        for i in (0us..8) {
+        for i in (0..8) {
             vals[4 + i] = to_le_u32!(key[4 * i]);
         }
 
         // counter
-        vals[12] = 0;
-        vals[13] = 0;
+        vals[12] = w32(0);
+        vals[13] = w32(0);
 
         vals[14] = to_le_u32!(nonce[0]);
         vals[15] = to_le_u32!(nonce[4]);
@@ -48,11 +50,11 @@ impl ChaCha20 {
         }
     }
 
-    fn round20(&self) -> [u32; 16] {
+    fn round20(&self) -> [w32; 16] {
         // $e must be > 0 and < 32
         macro_rules! rot {
             ($a:expr, $e:expr) => ({
-                let a: u32 = $a;
+                let a: w32 = $a;
                 let e: usize = $e;
                 (a << e) | (a >> (32 - e))
             })
@@ -60,20 +62,20 @@ impl ChaCha20 {
 
         macro_rules! quarter_round {
             ($a:expr, $b:expr, $c:expr, $d:expr) => ({
-                $a += $b;
-                $d ^= $a;
+                $a = $a + $b;
+                $d = $d ^ $a;
                 $d = rot!($d, 16);
 
-                $c += $d;
-                $b ^= $c;
+                $c = $c + $d;
+                $b = $b ^ $c;
                 $b = rot!($b, 12);
 
-                $a += $b;
-                $d ^= $a;
+                $a = $a + $b;
+                $d = $d ^ $a;
                 $d = rot!($d, 8);
 
-                $c += $d;
-                $b ^= $c;
+                $c = $c + $d;
+                $b = $b ^ $c;
                 $b = rot!($b, 7);
             })
         }
@@ -85,7 +87,7 @@ impl ChaCha20 {
         }
 
         let mut vals = self.vals;
-        for _ in (0us..10) {
+        for _ in (0..10) {
             // column round
             quarter_round_idx!(vals, 0, 4, 8, 12);
             quarter_round_idx!(vals, 1, 5, 9, 13);
@@ -99,8 +101,8 @@ impl ChaCha20 {
             quarter_round_idx!(vals, 3, 4, 9, 14);
         }
 
-        for i in (0us..16) {
-            vals[i] += self.vals[i];
+        for i in (0..16) {
+            vals[i] = vals[i] + self.vals[i];
         }
 
         vals
@@ -111,20 +113,20 @@ impl ChaCha20 {
 
         // in TLS, vals[13] never increases
         {
-            self.vals[12] += 1;
-            //let mut count = (self.vals[12] as u64) | (self.vals[13] as u64 << 32);
-            //count += 1;
-            //self.vals[12] = count as u32;
-            //self.vals[13] = (count >> 32) as u32;
+            self.vals[12] = self.vals[12] + w32(1);
+            // let mut count = (self.vals[12].to_w64()) | (self.vals[13].to_w64() << 32);
+            // count += w64(1);
+            // self.vals[12] = count.to_w32();
+            // self.vals[13] = (count >> 32).to_w32();
         }
 
         let next_bytes = {
             let mut next_bytes = [0u8; 64];
-            for i in (0us..16) {
-                next_bytes[4 * i + 0] = next[i] as u8;
-                next_bytes[4 * i + 1] = (next[i] >> 8) as u8;
-                next_bytes[4 * i + 2] = (next[i] >> 16) as u8;
-                next_bytes[4 * i + 3] = (next[i] >> 24) as u8;
+            for i in (0..16) {
+                next_bytes[4 * i + 0] = next[i].to_w8().0;
+                next_bytes[4 * i + 1] = (next[i] >> 8).to_w8().0;
+                next_bytes[4 * i + 2] = (next[i] >> 16).to_w8().0;
+                next_bytes[4 * i + 3] = (next[i] >> 24).to_w8().0;
             }
             next_bytes
         };
@@ -160,8 +162,8 @@ mod test {
     fn check_keystream(key: &[u8], nonce: &[u8], keystream: &[u8]) {
         let mut chacha = ChaCha20::new(key, nonce);
         let input: Vec<_> = repeat(0u8).take(keystream.len()).collect();
-        let output = chacha.encrypt(&input[]);
-        assert_eq!(&output[], keystream);
+        let output = chacha.encrypt(&input);
+        assert_eq!(&output[..], keystream);
     }
 
     #[test]
@@ -200,10 +202,10 @@ mod test {
                           \x5d\xdc\x49\x7a\x0b\x46\x6e\x7d\x6b\xbd\xb0\x04\x1b\x2f\x58\x6b";
         check_keystream(&key, &nonce, keystream);
 
-        for i in (0us..0x20) {
+        for i in (0..0x20) {
             key[i] = i as u8;
         }
-        for i in (0us..0x08) {
+        for i in (0..0x08) {
             nonce[i] = i as u8;
         }
         let keystream = b"\xf7\x98\xa1\x89\xf1\x95\xe6\x69\x82\x10\x5f\xfb\x64\x0b\xb7\x75\

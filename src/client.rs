@@ -1,7 +1,8 @@
-use std::old_io::net::tcp::TcpStream;
+use std::io;
+use std::io::prelude::*;
+use std::net::TcpStream;
 use std::slice::bytes::copy_memory;
 use std::cmp;
-use std::old_io::{IoResult, IoError, OtherIoError};
 use rand::{Rng, OsRng};
 
 use tls_result::TlsResult;
@@ -15,12 +16,12 @@ use handshake::{self, Handshake};
 use tls::{Tls, TLS_VERSION};
 
 // handshake is done during construction.
-pub struct TlsClient<R: Reader, W: Writer> {
+pub struct TlsClient<R: Read, W: Write> {
     tls: Tls<R, W>,
     buf: Vec<u8>,
 }
 
-impl<R: Reader, W: Writer> TlsClient<R, W> {
+impl<R: Read, W: Write> TlsClient<R, W> {
     pub fn new(reader: R, writer: W, rng: OsRng) -> TlsResult<TlsClient<R, W>> {
         let mut client = TlsClient {
             tls: Tls::new(reader, writer, rng),
@@ -101,7 +102,7 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // we always use server key exchange
         let server_key_ex_data = expect!(server_key_exchange);
         let kex = cipher_suite.new_kex();
-        let (key_data, pre_master_secret) = try!(kex.compute_keys(&*server_key_ex_data,
+        let (key_data, pre_master_secret) = try!(kex.compute_keys(&server_key_ex_data,
                                                                   &mut self.tls.rng));
 
         expect!(server_hello_done);
@@ -114,8 +115,8 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // SECRET
         let master_secret = {
             let mut label_seed = b"master secret".to_vec();
-            label_seed.push_all(&*cli_random);
-            label_seed.push_all(&*server_hello_data.random);
+            label_seed.push_all(&cli_random);
+            label_seed.push_all(&server_hello_data.random);
 
             let mut prf = Prf::new(pre_master_secret, label_seed);
             prf.get_bytes(48)
@@ -126,8 +127,8 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // SECRET
         let read_key = {
             let mut label_seed = b"key expansion".to_vec();
-            label_seed.push_all(&*server_hello_data.random);
-            label_seed.push_all(&*cli_random);
+            label_seed.push_all(&server_hello_data.random);
+            label_seed.push_all(&cli_random);
 
             let mut prf = Prf::new(master_secret.clone(), label_seed);
 
@@ -166,13 +167,13 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
         // can be broken into several records. This leads to alert attack.
         // since we don't accept strange alerts, all "normal" alert messages are
         // treated as error, so now we can assert that we haven't received alerts.
-        let verify_hash = sha256(&msgs[]);
+        let verify_hash = sha256(&msgs);
 
         let client_verify_data = {
             let finished_label = b"client finished";
 
             let mut label_seed = finished_label.to_vec();
-            label_seed.push_all(&verify_hash[]);
+            label_seed.push_all(&verify_hash);
             let mut prf = Prf::new(master_secret.clone(), label_seed);
             prf.get_bytes(cipher_suite.verify_data_len())
         };
@@ -192,10 +193,10 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                 // ideally we may save "raw" packet data..
                 let mut serv_msgs = Vec::new();
                 // FIXME: this should not throw "io error".. should throw "internal error"
-                try!(serv_msgs.write_all(&msgs[]));
+                try!(Write::write_all(&mut serv_msgs, &msgs));
                 try!(finished.tls_write(&mut serv_msgs));
 
-                let verify_hash = sha256(&serv_msgs[]);
+                let verify_hash = sha256(&serv_msgs);
                 verify_hash
             };
 
@@ -203,13 +204,13 @@ impl<R: Reader, W: Writer> TlsClient<R, W> {
                 let finished_label = b"server finished";
 
                 let mut label_seed = finished_label.to_vec();
-                label_seed.push_all(&verify_hash[]);
+                label_seed.push_all(&verify_hash);
                 let mut prf = Prf::new(master_secret, label_seed);
                 prf.get_bytes(cipher_suite.verify_data_len())
             };
 
-            let verify_ok = crypto_compare(&server_finished[],
-                                           &server_verify_data[]);
+            let verify_ok = crypto_compare(&server_finished,
+                                           &server_verify_data);
             if !verify_ok {
                 return tls_err!(DecryptError, "server sent wrong verify data");
             }
@@ -230,35 +231,40 @@ impl TlsClient<TcpStream, TcpStream> {
             Err(..) => return tls_err!(InternalError, "failed to create OsRng"),
         };
 
-        let reader = stream.clone();
+        let reader = try!(stream.try_clone());
         let writer = stream;
         TlsClient::new(reader, writer, rng)
     }
 }
 
-impl<R: Reader, W: Writer> Writer for TlsClient<R, W> {
-    // if ssl connection is failed, return `EndOfFile`.
-    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+impl<R: Read, W: Write> Write for TlsClient<R, W> {
+    // this either writes all or fails.
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        try!(self.write_all(buf));
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         let result = self.tls.writer.write_application_data(buf);
         match result {
             Ok(()) => Ok(()),
             Err(err) => {
                 let err = self.tls.send_tls_alert(err);
                 // FIXME more verbose io error
-                Err(IoError {
-                    kind: OtherIoError,
-                    desc: "TLS write error",
-                    detail: Some(err.desc),
-                })
+                Err(io::Error::new(io::ErrorKind::Other, "TLS write error", Some(err.desc)))
             }
         }
     }
 }
 
-impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
+impl<R: Read, W: Write> Read for TlsClient<R, W> {
     // if ssl connection is failed, return `EndOfFile`.
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
-        let mut pos = 0us;
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let mut pos: usize = 0;
         let len = buf.len();
         while pos < len {
             let remaining = len - pos;
@@ -269,7 +275,7 @@ impl<R: Reader, W: Writer> Reader for TlsClient<R, W> {
                         break; // FIXME: stop if EOF. otherwise raise error?
                     }
                 };
-                self.buf.push_all(&data[]);
+                self.buf.push_all(&data);
             }
 
             let selflen = self.buf.len();

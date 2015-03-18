@@ -1,3 +1,4 @@
+use std::io::prelude::*;
 use rand::OsRng;
 
 use tls_result::{TlsResult, TlsError, TlsErrorKind};
@@ -6,13 +7,13 @@ use alert::{self, Alert};
 
 pub static TLS_VERSION: (u8, u8) = (3, 3);
 
-pub struct Tls<R: Reader, W: Writer> {
+pub struct Tls<R: Read, W: Write> {
     pub writer: RecordWriter<W>,
     pub reader: RecordReader<R>,
     pub rng: OsRng,
 }
 
-impl<R: Reader, W: Writer> Tls<R, W> {
+impl<R: Read, W: Write> Tls<R, W> {
     pub fn new(reader: R, writer: W, rng: OsRng) -> Tls<R, W> {
         let writer = RecordWriter::new(writer);
         let reader = RecordReader::new(reader);

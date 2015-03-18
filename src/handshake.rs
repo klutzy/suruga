@@ -1,5 +1,6 @@
-use std::old_io::MemReader;
+use std::io::prelude::*;
 
+use util::{ReadExt, WriteExt};
 use tls::TLS_VERSION;
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{InternalError, UnexpectedMessage};
@@ -111,16 +112,16 @@ macro_rules! tls_handshake(
         }
 
         impl TlsItem for Handshake {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> TlsResult<()> {
                 match *self {
                     $(
                         Handshake::$name(ref body) => {
                             try!(writer.write_u8(tt_to_expr!($num)));
 
                             let len = body.tls_size();
-                            try!(writer.write_u8((len >> 16) as u8));
-                            try!(writer.write_u8((len >> 8) as u8));
-                            try!(writer.write_u8(len as u8));
+                            try!(writer.write_u8(((len >> 16) & 0xff) as u8));
+                            try!(writer.write_u8(((len >> 8) & 0xff) as u8));
+                            try!(writer.write_u8((len & 0xff) as u8));
 
                             try!(body.tls_write(writer));
                         }
@@ -130,7 +131,7 @@ macro_rules! tls_handshake(
                 Ok(())
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> TlsResult<Handshake> {
+            fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<Handshake> {
                 let ty = try!(reader.read_u8());
 
                 // HandshakeBuffer already checked validity of length
@@ -240,7 +241,7 @@ impl HandshakeBuffer {
     }
 
     pub fn add_record(&mut self, fragment: Vec<u8>) {
-        self.buf.push_all(&fragment[]);
+        self.buf.push_all(&fragment);
     }
 
     // if message is arrived but has unknown type, the message is discarded and returns error.
@@ -270,8 +271,8 @@ impl HandshakeBuffer {
         };
         self.buf = remaining;
 
-        let mut reader = MemReader::new(message);
-        let message: Handshake = try!(TlsItem::tls_read(&mut reader));
+        let mut reader = &mut &message[..];
+        let message: Handshake = try!(TlsItem::tls_read(reader));
         let ret = Ok(Some(message));
 
         ret
@@ -340,7 +341,7 @@ impl Handshake {
 
 #[cfg(test)]
 mod test {
-    use std::old_io::MemReader;
+    use std::io::Cursor;
     use tls_item::TlsItem;
     use cipher::CipherSuite;
 
@@ -396,7 +397,7 @@ mod test {
         let mut packet = Vec::new();
         client_hello_msg.tls_write(&mut packet).unwrap();
 
-        let mut reader = MemReader::new(packet.clone());
+        let mut reader = Cursor::new(&packet[..]);
         let client_hello_msg_2: Handshake = TlsItem::tls_read(&mut reader).unwrap();
 
         let mut packet_2 = Vec::new();

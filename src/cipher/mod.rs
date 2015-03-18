@@ -1,5 +1,6 @@
 use rand::OsRng;
 
+use util::{ReadExt, WriteExt};
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::UnexpectedMessage;
 use tls_item::TlsItem;
@@ -52,7 +53,7 @@ macro_rules! cipher_suite {
             pub fn new_aead(&self) -> Box<Aead> {
                 match *self {
                     $(
-                        CipherSuite::$id => box $cipher as Box<Aead>,
+                        CipherSuite::$id => Box::new($cipher) as Box<Aead>,
                     )+
                     CipherSuite::UnknownCipherSuite => unreachable!(),
                 }
@@ -61,7 +62,7 @@ macro_rules! cipher_suite {
             pub fn new_kex(&self) -> Box<KeyExchange> {
                 match *self {
                     $(
-                        CipherSuite::$id => box $kex as Box<KeyExchange>,
+                        CipherSuite::$id => Box::new($kex) as Box<KeyExchange>,
                     )+
                     CipherSuite::UnknownCipherSuite => unreachable!(),
                 }
@@ -72,7 +73,7 @@ macro_rules! cipher_suite {
         }
 
         impl TlsItem for CipherSuite {
-            fn tls_write<W: Writer>(&self, writer: &mut W) -> TlsResult<()> {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> TlsResult<()> {
                 $(
                     if *self == CipherSuite::$id {
                         try!(writer.write_u8($v1));
@@ -84,7 +85,7 @@ macro_rules! cipher_suite {
                 return tls_err!(UnexpectedMessage, "unexpected CipherSuite: {:?}", self);
             }
 
-            fn tls_read<R: Reader>(reader: &mut R) -> TlsResult<CipherSuite> {
+            fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<CipherSuite> {
                 let id1 = try!(reader.read_u8());
                 let id2 = try!(reader.read_u8());
                 $(

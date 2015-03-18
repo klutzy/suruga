@@ -23,22 +23,22 @@ fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8; MAC_LEN] {
     // note that in draft-agl-tls-chacha20poly1305-01 length is first
     fn push_all_with_len(vec: &mut Vec<u8>, data: &[u8]) {
         vec.push_all(data);
-        vec.push_all(&u64_le_array(data.len() as u64)[]);
+        vec.push_all(&u64_le_array(data.len() as u64));
     }
 
     push_all_with_len(&mut msg, ad);
     push_all_with_len(&mut msg, encrypted);
 
     let mut r = [0u8; MAC_LEN];
-    for i in (0us..MAC_LEN) {
+    for i in (0..MAC_LEN) {
         r[i] = poly_key[i];
     }
     let mut k = [0u8; MAC_LEN];
-    for i in (0us..MAC_LEN) {
+    for i in (0..MAC_LEN) {
         k[i] = poly_key[MAC_LEN + i];
     }
 
-    poly1305::authenticate(&msg[], &r, &k)
+    poly1305::authenticate(&msg, &r, &k)
 }
 
 struct ChaCha20Poly1305Encryptor {
@@ -47,12 +47,12 @@ struct ChaCha20Poly1305Encryptor {
 
 impl Encryptor for ChaCha20Poly1305Encryptor {
     fn encrypt(&mut self, nonce: &[u8], data: &[u8], ad: &[u8]) -> Vec<u8> {
-        let mut chacha20 = ChaCha20::new(&self.key[], nonce);
+        let mut chacha20 = ChaCha20::new(&self.key, nonce);
         let poly1305_key = chacha20.next();
 
         let mut encrypted = chacha20.encrypt(data);
-        let mac = compute_mac(&poly1305_key[], &encrypted[], ad);
-        encrypted.push_all(&mac[]);
+        let mac = compute_mac(&poly1305_key, &encrypted, ad);
+        encrypted.push_all(&mac);
 
         encrypted
     }
@@ -72,17 +72,17 @@ impl Decryptor for ChaCha20Poly1305Decryptor {
         let encrypted = &data[..(enc_len - MAC_LEN)];
         let mac_expected = &data[(enc_len - MAC_LEN)..];
 
-        let mut chacha20 = ChaCha20::new(&self.key[], nonce);
+        let mut chacha20 = ChaCha20::new(&self.key, nonce);
         let poly1305_key = chacha20.next();
 
-        let mac_computed = compute_mac(&poly1305_key[], &encrypted[], ad);
+        let mac_computed = compute_mac(&poly1305_key, &encrypted, ad);
 
         // SECRET
         // even if `mac_computed != mac_expected`, decrypt the data to prevent timing attack.
         let plain = chacha20.encrypt(encrypted);
 
         let mut diff = 0u8;
-        for i in (0us..MAC_LEN) {
+        for i in (0..MAC_LEN) {
             diff |= mac_computed[i] ^ mac_expected[i];
         }
 

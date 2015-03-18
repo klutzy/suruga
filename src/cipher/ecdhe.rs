@@ -1,6 +1,8 @@
+use std::io::Cursor;
 use rand::{Rng, OsRng};
-use std::old_io::BufReader;
 
+use crypto::wrapping::Wrapping as W;
+use util::{ReadExt, WriteExt};
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::IllegalParameter;
 use tls_item::TlsItem;
@@ -35,10 +37,10 @@ pub struct EllipticDiffieHellman;
 
 impl KeyExchange for EllipticDiffieHellman {
     fn compute_keys(&self, data: &[u8], rng: &mut OsRng) -> TlsResult<(Vec<u8>, Vec<u8>)> {
-        let mut reader = BufReader::new(data);
+        let mut reader = Cursor::new(data);
         let ecdh_params: EcdheServerKeyExchange = try!(TlsItem::tls_read(&mut reader));
 
-        let gy = &*ecdh_params.params.public;
+        let gy = &ecdh_params.params.public;
         let gy = p256::NPoint256::from_uncompressed_bytes(gy);
         let gy = match gy {
             None => {
@@ -51,12 +53,12 @@ impl KeyExchange for EllipticDiffieHellman {
         fn get_random_x(rng: &mut OsRng) -> p256::int256::Int256 {
             loop {
                 let mut x = p256::int256::ZERO;
-                for i in 0us..8 {
-                    x.v[i] = rng.next_u32();
+                for i in 0..8 {
+                    x.v[i] = W(rng.next_u32());
                 }
-                let xx = x.reduce_once(0);
+                let xx = x.reduce_once(W(0));
                 let x_is_okay = xx.compare(&x);
-                if x_is_okay == 0 {
+                if x_is_okay == W(0) {
                     return x;
                 }
             }

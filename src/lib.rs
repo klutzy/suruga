@@ -3,10 +3,7 @@
 
 #![allow(missing_copy_implementations)]
 
-#![feature(slicing_syntax)]
-#![feature(core)]
-#![feature(io)]
-#![feature(collections)]
+#![feature(io, core, collections, net)]
 
 #[macro_use]
 extern crate log;
@@ -20,12 +17,7 @@ pub mod macros;
 pub mod util;
 
 // basic crypto primitives
-pub mod crypto {
-    pub mod sha2;
-    pub mod p256;
-    pub mod poly1305;
-    pub mod chacha20;
-}
+pub mod crypto;
 
 pub mod tls_result;
 #[macro_use]

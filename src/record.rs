@@ -1,3 +1,4 @@
+use std::io::prelude::*;
 use std::num::FromPrimitive;
 
 use tls_result::TlsResult;
@@ -5,6 +6,7 @@ use tls_result::TlsErrorKind::{UnexpectedMessage, RecordOverflow, BadRecordMac, 
 use alert::Alert;
 use handshake::{Handshake, HandshakeBuffer};
 use util::u64_be_array;
+use util::{ReadExt, WriteExt};
 use cipher::{Encryptor, Decryptor};
 use tls_item::TlsItem;
 use tls::TLS_VERSION;
@@ -79,14 +81,14 @@ impl EncryptedRecord {
     }
 }
 
-pub struct RecordWriter<W: Writer> {
+pub struct RecordWriter<W: Write> {
     writer: W,
     // if encryptor is None, handshake is not done yet.
     encryptor: Option<Box<Encryptor + 'static>>,
     write_count: u64,
 }
 
-impl<W: Writer> RecordWriter<W> {
+impl<W: Write> RecordWriter<W> {
     pub fn new(writer: W) -> RecordWriter<W> {
         RecordWriter {
             writer: writer,
@@ -110,7 +112,7 @@ impl<W: Writer> RecordWriter<W> {
                 let seq_num = u64_be_array(self.write_count);
 
                 let mut ad = Vec::new();
-                ad.push_all(&seq_num[]);
+                ad.push_all(&seq_num);
                 ad.push(record.content_type as u8);
                 ad.push(record.ver_major);
                 ad.push(record.ver_minor);
@@ -118,9 +120,9 @@ impl<W: Writer> RecordWriter<W> {
                 ad.push((frag_len >> 8) as u8);
                 ad.push(frag_len as u8);
 
-                let encrypted_fragment = encryptor.encrypt(&seq_num[],
-                                                           &*record.fragment,
-                                                           &ad[]);
+                let encrypted_fragment = encryptor.encrypt(&seq_num,
+                                                           &record.fragment,
+                                                           &ad);
                 EncryptedRecord::new(record.content_type,
                                      record.ver_major,
                                      record.ver_minor,
@@ -136,7 +138,7 @@ impl<W: Writer> RecordWriter<W> {
         try!(self.writer.write_u8(minor));
 
         try!(self.writer.write_be_u16(fragment_len));
-        try!(self.writer.write_all(&*enc_record.fragment));
+        try!(self.writer.write_all(&enc_record.fragment));
 
         self.write_count += 1;
 
@@ -158,13 +160,13 @@ impl<W: Writer> RecordWriter<W> {
     pub fn write_handshake(&mut self, handshake: &Handshake) -> TlsResult<()> {
         let mut data = Vec::new();
         try!(handshake.tls_write(&mut data));
-        self.write_data(HandshakeTy, &data[])
+        self.write_data(HandshakeTy, &data)
     }
 
     pub fn write_alert(&mut self, alert: &Alert) -> TlsResult<()> {
         let mut data = Vec::new();
         try!(alert.tls_write(&mut data));
-        self.write_data(AlertTy, &data[])
+        self.write_data(AlertTy, &data)
     }
 
     pub fn write_change_cipher_spec(&mut self) -> TlsResult<()> {
@@ -186,7 +188,7 @@ pub enum Message {
     ApplicationDataMessage(Vec<u8>),
 }
 
-pub struct RecordReader<R: Reader> {
+pub struct RecordReader<R: ReadExt> {
     reader: R,
     // if decryptor is none, handshake is not done yet.
     decryptor: Option<Box<Decryptor + 'static>>,
@@ -194,7 +196,7 @@ pub struct RecordReader<R: Reader> {
     handshake_buffer: HandshakeBuffer,
 }
 
-impl<R: Reader> RecordReader<R> {
+impl<R: ReadExt> RecordReader<R> {
     pub fn new(reader: R) -> RecordReader<R> {
         RecordReader {
             reader: reader,
@@ -242,7 +244,7 @@ impl<R: Reader> RecordReader<R> {
                 let seq_num = u64_be_array(self.read_count);
 
                 let mut ad = Vec::new();
-                ad.push_all(&seq_num[]);
+                ad.push_all(&seq_num);
                 ad.push(enc_record.content_type as u8); // TLSCompressed.type
                 ad.push(enc_record.ver_major);
                 ad.push(enc_record.ver_minor);
@@ -257,9 +259,9 @@ impl<R: Reader> RecordReader<R> {
                 ad.push(frag_len as u8);
 
                 // TODO: "seq_num as nonce" is chacha20poly1305-specific
-                let data = try!(decryptor.decrypt(&seq_num[],
-                                                  &*enc_record.fragment,
-                                                  &ad[]));
+                let data = try!(decryptor.decrypt(&seq_num,
+                                                  &enc_record.fragment,
+                                                  &ad));
 
                 Record::new(enc_record.content_type,
                             enc_record.ver_major,
