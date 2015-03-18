@@ -1,5 +1,7 @@
 // http://cr.yp.to/mac/poly1305-20050329.pdf
 
+use crypto::wrapping::*;
+
 macro_rules! choose_impl {
     ($s: ident, $t:ty, $($a:expr)+) => (
         impl $s {
@@ -229,10 +231,10 @@ pub fn authenticate(msg: &[u8], r: &[u8; 16], aes: &[u8; 16]) -> [u8; 16] {
     let h = {
         macro_rules! b {
             ($i:expr, $n:expr) => (
-                (h.v[$i] >> $n) as u8
+                Wrapping(h.v[$i] >> $n).to_w8().0
             );
             ($i:expr, $n:expr, $m:expr) => (
-                ((h.v[$i] >> $n) | (h.v[$i+1] & ((1 << $m) - 1)) << (8 - $m)) as u8
+                Wrapping((h.v[$i] >> $n) | (h.v[$i+1] & ((1 << $m) - 1)) << (8 - $m)).to_w8().0
             );
         }
 
@@ -294,10 +296,10 @@ pub fn authenticate(msg: &[u8], r: &[u8; 16], aes: &[u8; 16]) -> [u8; 16] {
 
         macro_rules! to_u8 {
             ($a:expr, $r:expr, $i:expr) => ({
-                $a[$i] = $r as u8;
-                $a[$i+1] = ($r >> 8) as u8;
-                $a[$i+2] = ($r >> 16) as u8;
-                $a[$i+3] = ($r >> 24) as u8;
+                $a[$i] = Wrapping($r).to_w8().0;
+                $a[$i+1] = Wrapping($r >> 8).to_w8().0;
+                $a[$i+2] = Wrapping($r >> 16).to_w8().0;
+                $a[$i+3] = Wrapping($r >> 24).to_w8().0;
             })
         }
 
