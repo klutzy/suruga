@@ -118,9 +118,9 @@ macro_rules! tls_handshake(
                             try!(writer.write_u8(tt_to_expr!($num)));
 
                             let len = body.tls_size();
-                            try!(writer.write_u8((len >> 16) as u8));
-                            try!(writer.write_u8((len >> 8) as u8));
-                            try!(writer.write_u8(len as u8));
+                            try!(writer.write_u8(((len >> 16) & 0xff) as u8));
+                            try!(writer.write_u8(((len >> 8) & 0xff) as u8));
+                            try!(writer.write_u8((len & 0xff) as u8));
 
                             try!(body.tls_write(writer));
                         }
