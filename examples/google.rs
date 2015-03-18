@@ -1,11 +1,5 @@
-suruga is Rust implementation of [TLS 1.2][tls-12].
+#![feature(net)]
 
-It currently implements some core parts of TLS 1.2,
-NIST P-256 [ECDHE][tls-ecc] and [chacha20-poly1305][tls-chacha20-poly1305].
-
-# Usage
-
-```Rust
 extern crate suruga;
 
 use std::io::prelude::*;
@@ -29,8 +23,3 @@ fn test() -> suruga::tls_result::TlsResult<()> {
 
     Ok(())
 }
-```
-
-[tls-12]: http://tools.ietf.org/html/rfc5246
-[tls-ecc]: http://tools.ietf.org/html/rfc4492
-[tls-chacha20-poly1305]: https://tools.ietf.org/html/draft-agl-tls-chacha20poly1305-04
