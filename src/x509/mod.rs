@@ -54,6 +54,7 @@ pub type CertResult<T> = Result<T, CertError>;
 #[macro_use]
 pub mod macros;
 
+pub mod pem;
 pub mod cert_serial_number;
 pub mod version;
 pub mod alg_id;
@@ -61,5 +62,4 @@ pub mod name;
 pub mod validity;
 pub mod extension;
 pub mod certificate;
-
 pub mod crl;

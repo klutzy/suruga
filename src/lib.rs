@@ -10,6 +10,7 @@ extern crate num;
 
 #[macro_use]
 extern crate enum_primitive;
+extern crate rustc_serialize; // base64
 extern crate chrono;
 
 pub use client::TlsClient;
