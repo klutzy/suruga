@@ -1,8 +1,8 @@
-use std::error::{Error, FromError};
+use std::error::Error;
 use std::io;
 use std::fmt;
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum TlsErrorKind {
     // corresponds to alert messages
 
@@ -54,8 +54,8 @@ impl Error for TlsError {
     }
 }
 
-impl FromError<io::Error> for TlsError {
-    fn from_error(err: io::Error) -> TlsError {
+impl From<io::Error> for TlsError {
+    fn from(err: io::Error) -> TlsError {
         TlsError {
             kind: TlsErrorKind::IoFailure,
             desc: format!("io error: {}", err),

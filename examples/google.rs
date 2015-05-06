@@ -1,5 +1,3 @@
-#![feature(net)]
-
 extern crate suruga;
 
 use std::io::prelude::*;

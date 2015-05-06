@@ -1,6 +1,27 @@
-use std::mem;
-use std::num::Int;
+use std::{mem, fmt};
+use std::error::Error;
 use std::io::{self, Read, Write};
+
+#[derive(Debug)]
+pub struct SurugaError {
+    pub desc: &'static str,
+    pub cause: Option<Box<Error + Send + Sync + 'static>>,
+}
+
+impl fmt::Display for SurugaError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        <Self as fmt::Debug>::fmt(self, fmt)
+    }
+}
+
+impl Error for SurugaError {
+    fn description(&self) -> &str {
+        self.desc
+    }
+
+    // FIXME: implement fn cause(&self) -> Option<&Error>
+    // This runs into difficulties with differing trait bounds.
+}
 
 /// constant-time compare function.
 /// `a` and `b` may be SECRET, but the length is known.
@@ -62,7 +83,10 @@ pub trait ReadExt: Read {
         while pos < len {
             let num_bytes = try!(self.read(&mut buf[pos..]));
             if num_bytes == 0 {
-                return Err(io::Error::new(io::ErrorKind::Other, "EOF during `fill_exact`", None));
+                return Err(io::Error::new(io::ErrorKind::Other, SurugaError {
+                    desc: "EOF during `fill_exact`",
+                    cause: None
+                }));
             }
             pos += num_bytes;
         }
