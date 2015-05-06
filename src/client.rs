@@ -36,6 +36,16 @@ impl<R: Read, W: Write> TlsClient<R, W> {
         Ok(client)
     }
 
+    #[inline]
+    pub fn reader(&mut self) -> &mut R {
+        self.tls.reader.get_mut()
+    }
+
+    #[inline]
+    pub fn writer(&mut self) -> &mut W {
+        self.tls.writer.get_mut()
+    }
+
     // this does not send alert when error occurs
     fn handshake(&mut self) -> TlsResult<()> {
         // expect specific HandshakeMessage. otherwise return Err

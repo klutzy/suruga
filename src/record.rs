@@ -99,6 +99,11 @@ impl<W: Write> RecordWriter<W> {
         }
     }
 
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut W {
+        &mut self.writer
+    }
+
     pub fn set_encryptor(&mut self, encryptor: Box<Encryptor + Send + 'static>) {
         self.encryptor = Some(encryptor);
         self.write_count = 0;
@@ -206,6 +211,11 @@ impl<R: ReadExt> RecordReader<R> {
             read_count: 0,
             handshake_buffer: HandshakeBuffer::new(),
         }
+    }
+
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut R {
+        &mut self.reader
     }
 
     pub fn set_decryptor(&mut self, decryptor: Box<Decryptor + Send + 'static>) {
