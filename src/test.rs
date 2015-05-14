@@ -30,9 +30,9 @@ impl Decryptor for NullDecryptor {
 fn null_tls<R: Read, W: Write>(reader: R, writer: W) -> Tls<R, W> {
     let mut tls = Tls::new(reader, writer, OsRng::new().unwrap());
 
-    let null_encryptor = Box::new(NullEncryptor) as Box<Encryptor>;
+    let null_encryptor = Box::new(NullEncryptor) as Box<Encryptor + Send>;
     tls.writer.set_encryptor(null_encryptor);
-    let null_decryptor = Box::new(NullDecryptor) as Box<Decryptor>;
+    let null_decryptor = Box::new(NullDecryptor) as Box<Decryptor + Send>;
     tls.reader.set_decryptor(null_decryptor);
 
     tls

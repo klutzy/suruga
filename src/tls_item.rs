@@ -89,13 +89,15 @@ macro_rules! tls_enum {
             ),+
         }
     ) => (
-        #[allow(non_camel_case_types)]
-        #[derive(Copy, PartialEq, FromPrimitive)]
-        $(#[$a])*
-        pub enum $name {
-            $(
-                $item = $n,
-            )+
+        enum_from_primitive! {
+            #[allow(non_camel_case_types)]
+            #[derive(Copy, Clone, PartialEq)]
+            $(#[$a])*
+            pub enum $name {
+                $(
+                    $item = $n,
+                )+
+            }
         }
 
         impl TlsItem for $name {
@@ -106,7 +108,7 @@ macro_rules! tls_enum {
 
             fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
                 let num = stry_read_num!($repr_ty, reader) as u64;
-                let n: Option<$name> = ::std::num::FromPrimitive::from_u64(num);
+                let n: Option<$name> = ::num::traits::FromPrimitive::from_u64(num);
                 match n {
                     Some(n) => Ok(n),
                     None => tls_err!(::tls_result::TlsErrorKind::DecodeError,

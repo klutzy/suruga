@@ -8,3 +8,5 @@ authors = ["klutzytheklutzy@gmail.com"]
 
 log = "*"
 rand = "*"
+num = "*"
+enum_primitive = "*"

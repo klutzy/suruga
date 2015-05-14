@@ -7,7 +7,7 @@ use rand::{Rng, OsRng};
 
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{UnexpectedMessage, InternalError, DecryptError, IllegalParameter};
-use util::crypto_compare;
+use util::{SurugaError, crypto_compare};
 use cipher::{self, Aead};
 use cipher::prf::Prf;
 use crypto::sha2::sha256;
@@ -34,6 +34,16 @@ impl<R: Read, W: Write> TlsClient<R, W> {
             Err(err) => return Err(client.tls.send_tls_alert(err)),
         }
         Ok(client)
+    }
+
+    #[inline]
+    pub fn reader(&mut self) -> &mut R {
+        self.tls.reader.get_mut()
+    }
+
+    #[inline]
+    pub fn writer(&mut self) -> &mut W {
+        self.tls.writer.get_mut()
     }
 
     // this does not send alert when error occurs
@@ -255,7 +265,10 @@ impl<R: Read, W: Write> Write for TlsClient<R, W> {
             Err(err) => {
                 let err = self.tls.send_tls_alert(err);
                 // FIXME more verbose io error
-                Err(io::Error::new(io::ErrorKind::Other, "TLS write error", Some(err.desc)))
+                Err(io::Error::new(io::ErrorKind::Other, SurugaError {
+                    desc: "TLS write error",
+                    cause: Some(Box::new(err)),
+                }))
             }
         }
     }
@@ -280,7 +293,7 @@ impl<R: Read, W: Write> Read for TlsClient<R, W> {
 
             let selflen = self.buf.len();
             let necessary = cmp::min(remaining, selflen);
-            copy_memory(&mut buf[pos .. pos + necessary], &self.buf[.. necessary]);
+            copy_memory(&self.buf[.. necessary], &mut buf[pos .. pos + necessary]);
             pos += necessary;
 
             self.buf = self.buf[necessary..].to_vec();

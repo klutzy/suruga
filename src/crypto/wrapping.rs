@@ -3,7 +3,7 @@
 // NOTE: since there is no const fn (yet), you can't use `w32(100)` function
 // for consts and statics. (workaround: use `Wrapping(100)`.)
 
-pub use std::num::wrapping::{Wrapping, WrappingOps};
+pub use std::num::Wrapping;
 
 pub trait ToWrapping {
     fn to_w64(self) -> w64;

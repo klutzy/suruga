@@ -3,11 +3,15 @@
 
 #![allow(missing_copy_implementations)]
 
-#![feature(io, core, collections, net)]
+#![feature(core, collections)]
 
 #[macro_use]
 extern crate log;
 extern crate rand;
+extern crate num;
+
+#[macro_use]
+extern crate enum_primitive;
 
 pub use tls::Tls;
 pub use client::TlsClient;

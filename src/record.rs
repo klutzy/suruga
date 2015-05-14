@@ -1,5 +1,5 @@
 use std::io::prelude::*;
-use std::num::FromPrimitive;
+use num::traits::FromPrimitive;
 
 use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{UnexpectedMessage, RecordOverflow, BadRecordMac, AlertReceived};
@@ -15,14 +15,16 @@ use self::ContentType::{ChangeCipherSpecTy, AlertTy, HandshakeTy, ApplicationDat
 use self::Message::{HandshakeMessage, ChangeCipherSpecMessage, AlertMessage,
                     ApplicationDataMessage};
 
-#[repr(u8)]
-#[derive(Copy, PartialEq, FromPrimitive, Debug)]
-pub enum ContentType {
-    ChangeCipherSpecTy = 20,
-    AlertTy = 21,
-    HandshakeTy = 22,
-    ApplicationDataTy = 23,
-    // HeartBeat = 24, RFC 6520 extension :-)
+enum_from_primitive! {
+    #[repr(u8)]
+    #[derive(Copy, Clone, PartialEq, Debug)]
+    pub enum ContentType {
+        ChangeCipherSpecTy = 20,
+        AlertTy = 21,
+        HandshakeTy = 22,
+        ApplicationDataTy = 23,
+        // HeartBeat = 24, RFC 6520 extension :-)
+    }
 }
 
 /// maximum length of Record (excluding content_type, version, length fields)
@@ -84,7 +86,7 @@ impl EncryptedRecord {
 pub struct RecordWriter<W: Write> {
     writer: W,
     // if encryptor is None, handshake is not done yet.
-    encryptor: Option<Box<Encryptor + 'static>>,
+    encryptor: Option<Box<Encryptor + Send + 'static>>,
     write_count: u64,
 }
 
@@ -97,7 +99,12 @@ impl<W: Write> RecordWriter<W> {
         }
     }
 
-    pub fn set_encryptor(&mut self, encryptor: Box<Encryptor + 'static>) {
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut W {
+        &mut self.writer
+    }
+
+    pub fn set_encryptor(&mut self, encryptor: Box<Encryptor + Send + 'static>) {
         self.encryptor = Some(encryptor);
         self.write_count = 0;
     }
@@ -191,7 +198,7 @@ pub enum Message {
 pub struct RecordReader<R: ReadExt> {
     reader: R,
     // if decryptor is none, handshake is not done yet.
-    decryptor: Option<Box<Decryptor + 'static>>,
+    decryptor: Option<Box<Decryptor + Send + 'static>>,
     read_count: u64,
     handshake_buffer: HandshakeBuffer,
 }
@@ -206,7 +213,12 @@ impl<R: ReadExt> RecordReader<R> {
         }
     }
 
-    pub fn set_decryptor(&mut self, decryptor: Box<Decryptor + 'static>) {
+    #[inline]
+    pub fn get_mut(&mut self) -> &mut R {
+        &mut self.reader
+    }
+
+    pub fn set_decryptor(&mut self, decryptor: Box<Decryptor + Send + 'static>) {
         self.decryptor = Some(decryptor);
         self.read_count = 0;
     }

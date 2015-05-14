@@ -15,8 +15,8 @@ pub trait Aead {
     fn key_size(&self) -> usize;
     fn fixed_iv_len(&self) -> usize;
     fn mac_len(&self) -> usize;
-    fn new_encryptor(&self, key: Vec<u8>) -> Box<Encryptor + 'static>;
-    fn new_decryptor(&self, key: Vec<u8>) -> Box<Decryptor + 'static>;
+    fn new_encryptor(&self, key: Vec<u8>) -> Box<Encryptor + Send + 'static>;
+    fn new_decryptor(&self, key: Vec<u8>) -> Box<Decryptor + Send + 'static>;
 }
 
 pub trait Encryptor {
@@ -41,7 +41,7 @@ macro_rules! cipher_suite {
         $id:ident = $kex:ident, $cipher:ident, $mac:ident, $v1:expr, $v2:expr;
     )+) => (
         #[allow(non_camel_case_types)]
-        #[derive(Copy, PartialEq, Debug)]
+        #[derive(Copy, Clone, PartialEq, Debug)]
         pub enum CipherSuite {
             $(
                 $id,
