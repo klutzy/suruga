@@ -241,7 +241,7 @@ impl HandshakeBuffer {
     }
 
     pub fn add_record(&mut self, fragment: Vec<u8>) {
-        self.buf.push_all(&fragment);
+        self.buf.extend(&fragment);
     }
 
     // if message is arrived but has unknown type, the message is discarded and returns error.

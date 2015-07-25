@@ -125,8 +125,8 @@ impl<R: Read, W: Write> TlsClient<R, W> {
         // SECRET
         let master_secret = {
             let mut label_seed = b"master secret".to_vec();
-            label_seed.push_all(&cli_random);
-            label_seed.push_all(&server_hello_data.random);
+            label_seed.extend(&cli_random);
+            label_seed.extend(&server_hello_data.random[..]);
 
             let mut prf = Prf::new(pre_master_secret, label_seed);
             prf.get_bytes(48)
@@ -137,8 +137,8 @@ impl<R: Read, W: Write> TlsClient<R, W> {
         // SECRET
         let read_key = {
             let mut label_seed = b"key expansion".to_vec();
-            label_seed.push_all(&server_hello_data.random);
-            label_seed.push_all(&cli_random);
+            label_seed.extend(&server_hello_data.random[..]);
+            label_seed.extend(&cli_random);
 
             let mut prf = Prf::new(master_secret.clone(), label_seed);
 
@@ -183,7 +183,7 @@ impl<R: Read, W: Write> TlsClient<R, W> {
             let finished_label = b"client finished";
 
             let mut label_seed = finished_label.to_vec();
-            label_seed.push_all(&verify_hash);
+            label_seed.extend(&verify_hash);
             let mut prf = Prf::new(master_secret.clone(), label_seed);
             prf.get_bytes(cipher_suite.verify_data_len())
         };
@@ -214,7 +214,7 @@ impl<R: Read, W: Write> TlsClient<R, W> {
                 let finished_label = b"server finished";
 
                 let mut label_seed = finished_label.to_vec();
-                label_seed.push_all(&verify_hash);
+                label_seed.extend(&verify_hash);
                 let mut prf = Prf::new(master_secret, label_seed);
                 prf.get_bytes(cipher_suite.verify_data_len())
             };
@@ -288,7 +288,7 @@ impl<R: Read, W: Write> Read for TlsClient<R, W> {
                         break; // FIXME: stop if EOF. otherwise raise error?
                     }
                 };
-                self.buf.push_all(&data);
+                self.buf.extend(&data);
             }
 
             let selflen = self.buf.len();

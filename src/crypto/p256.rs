@@ -264,8 +264,8 @@ impl NPoint256 {
         // 0x04 || self.x (big endian) || self.y (big endian)
         let mut b = Vec::with_capacity(1 + (256 / 8) * 2);
         b.push(0x04); // uncompressed
-        b.push_all(&self.x.to_bytes());
-        b.push_all(&self.y.to_bytes());
+        b.extend(&self.x.to_bytes());
+        b.extend(&self.y.to_bytes());
         b
     }
 }

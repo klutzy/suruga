@@ -20,9 +20,9 @@ pub fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
         o_msg[i] ^= key[i];
     }
 
-    i_msg.push_all(msg);
+    i_msg.extend(msg);
     let h_i = sha256(&i_msg);
-    o_msg.push_all(&h_i);
+    o_msg.extend(&h_i);
     let h_o = sha256(&o_msg);
 
     h_o
@@ -50,7 +50,7 @@ impl Prf {
     // get 32-byte pseudorandom number.
     fn next_block(&mut self) -> [u8; 32] {
         let mut input = self.a.to_vec();
-        input.push_all(&self.seed);
+        input.extend(&self.seed);
         let next = hmac_sha256(&self.secret, &input);
         self.a = hmac_sha256(&self.secret, &self.a);
 
@@ -78,9 +78,9 @@ impl Prf {
             let next_block = self.next_block();
             let slice_len = size - ret.len();
             if slice_len > 32 {
-                ret.push_all(&next_block);
+                ret.extend(&next_block);
             } else {
-                ret.push_all(&next_block[..slice_len]);
+                ret.extend(&next_block[..slice_len]);
                 self.buf = next_block[slice_len..].to_vec();
                 break;
             };
@@ -136,9 +136,9 @@ mod test {
     fn test_get_bytes() {
         let ret1 = {
             let mut prf = Prf::new(Vec::new(), Vec::new());
-            let mut ret = Vec::new();
+            let mut ret: Vec<u8> = Vec::new();
             for _ in 0..100 {
-                ret.push_all(&prf.get_bytes(1));
+                ret.extend(&prf.get_bytes(1));
             }
             ret
         };
@@ -153,8 +153,8 @@ mod test {
         let ret3 = {
             let mut prf = Prf::new(Vec::new(), Vec::new());
             let mut b = prf.get_bytes(33);
-            b.push_all(&prf.get_bytes(33));
-            b.push_all(&prf.get_bytes(100 - 33 * 2));
+            b.extend(&prf.get_bytes(33));
+            b.extend(&prf.get_bytes(100 - 33 * 2));
             b
         };
 

@@ -119,7 +119,7 @@ impl<W: Write> RecordWriter<W> {
                 let seq_num = u64_be_array(self.write_count);
 
                 let mut ad = Vec::new();
-                ad.push_all(&seq_num);
+                ad.extend(&seq_num);
                 ad.push(record.content_type as u8);
                 ad.push(record.ver_major);
                 ad.push(record.ver_minor);
@@ -256,7 +256,7 @@ impl<R: ReadExt> RecordReader<R> {
                 let seq_num = u64_be_array(self.read_count);
 
                 let mut ad = Vec::new();
-                ad.push_all(&seq_num);
+                ad.extend(&seq_num);
                 ad.push(enc_record.content_type as u8); // TLSCompressed.type
                 ad.push(enc_record.ver_major);
                 ad.push(enc_record.ver_minor);

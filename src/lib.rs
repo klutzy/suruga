@@ -3,7 +3,7 @@
 
 #![allow(missing_copy_implementations)]
 
-#![feature(core, collections)]
+#![feature(slice_bytes)]
 
 #[macro_use]
 extern crate log;
