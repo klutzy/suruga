@@ -338,7 +338,7 @@ impl<R: ReadExt> RecordReader<R> {
                     if record.fragment.len() == 0 {
                         return tls_err!(UnexpectedMessage, "zero-length Handshake arrived");
                     }
-                    self.handshake_buffer.add_record(record.fragment);
+                    self.handshake_buffer.add_record(&record.fragment);
 
                     match try!(self.handshake_buffer.get_message()) {
                         Some(handshake_msg) => return Ok(HandshakeMessage(handshake_msg)),
