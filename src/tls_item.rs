@@ -1,14 +1,29 @@
+//! `TlsItem` represents item types that are serialized into TLS stream.
+//!
+//! There are several macros implementing common patterns:
+//!
+//! -   `tls_array` for fixed-length vector
+//! -   `tls_vec` for variable-length vector
+//! -   `tls_enum` for TLS enum type
+//! -   `tls_struct` for TLS constructed type
+//! -   `tls_option` for `Option<T>`
+
 use std::io::prelude::*;
 
 use util::{ReadExt, WriteExt};
 use tls_result::TlsResult;
 
+/// A trait for items that can be serialized at TLS stream.
 pub trait TlsItem {
+    /// Write an item into TLS stream.
     fn tls_write<W: WriteExt>(&self, writer: &mut W) -> TlsResult<()>;
+    /// Read an item from TLS stream.
     fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<Self>;
+    /// Returns the length of serialized bytes.
     fn tls_size(&self) -> u64;
 }
 
+// implementation of `TlsItem` for primitive integer types like `u8`
 macro_rules! tls_primitive {
     ($t:ident) => (
         impl TlsItem for $t {
@@ -367,7 +382,7 @@ macro_rules! tls_vec {
     )
 }
 
-// this only works when the item is at the last
+// this only works when the item is at the last of stream
 macro_rules! tls_option {
     ($t:ty) => (
         impl TlsItem for Option<$t> {
@@ -412,7 +427,8 @@ impl TlsItem for DummyItem {
     fn tls_size(&self) -> u64 { 0 }
 }
 
-// it is assumed that the data is at the end of stream. (calls `Read.read_to_end()`)
+// obsucre data received from TLS stream.
+// since the semantic is unknown, it is only meaningful to read until end of stream is reached.
 pub struct ObscureData(Vec<u8>);
 
 impl TlsItem for ObscureData {
