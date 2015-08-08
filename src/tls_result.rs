@@ -65,7 +65,7 @@ impl From<io::Error> for TlsError {
 
 impl fmt::Display for TlsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        <Self as fmt::Debug>::fmt(self, f)
     }
 }
 
