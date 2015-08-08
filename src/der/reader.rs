@@ -3,28 +3,16 @@
 // -   DER only!
 // -   Tag must be `< 31` (long tag is not supported) and length must be `< 65536`.
 
-// TODO use Cell<usize> for pos; this allows the following pattern:
-//
-// ```
-// let a = try!(reader.next_tlv());
-// match a {
-//     something => {
-//         let b = try!(reader.next_tlv());
-//     }
-// }
-// ```
-//
-// this is currently impossible because `a` freezes `reader`.
-// (yes, I don't like Cell because it's bogus to add unnecessary check but it's better than
-// unnecessary slice clones.)
+// TODO max_len
 
+use std::cell::Cell;
 use super::{Tag, TagClass};
 use super::DerResult;
 use super::DerErrorKind::{InvalidLen, InvalidTag, Eof};
 
 pub struct DerReader<'a> {
     buf: &'a [u8],
-    pos: usize,
+    pos: Cell<usize>,
     cur: Option<(Tag, &'a [u8])>,
 }
 
@@ -32,7 +20,7 @@ impl<'a> DerReader<'a> {
     pub fn new(buf: &'a [u8]) -> DerReader<'a> {
         DerReader {
             buf: buf,
-            pos: 0,
+            pos: Cell::new(0),
             cur: None,
         }
     }
@@ -41,9 +29,9 @@ impl<'a> DerReader<'a> {
 // internal utilities
 impl<'a> DerReader<'a> {
     fn read_u8(&mut self) -> DerResult<u8> {
-        match self.buf.get(self.pos) {
+        match self.buf.get(self.pos.get()) {
             Some(&val) => {
-                self.pos += 1;
+                self.pos.set(self.pos.get() + 1);
                 Ok(val)
             }
             None => return der_err!(Eof, "out-of-range"),
@@ -164,13 +152,13 @@ impl<'a> DerReader<'a> {
     }
 
     fn read_value(&mut self, len: usize) -> DerResult<&'a [u8]> {
-        let new_pos = self.pos + len;
+        let new_pos = self.pos.get() + len;
         if new_pos > self.buf.len() {
             return der_err!(Eof, "length too large: {}", len);
         }
 
-        let slice = &self.buf[self.pos ..new_pos];
-        self.pos += len;
+        let slice = &self.buf[self.pos.get() ..new_pos];
+        self.pos.set(self.pos.get() + len);
         Ok(slice)
     }
 }
@@ -178,7 +166,7 @@ impl<'a> DerReader<'a> {
 // basic methods
 impl<'a> DerReader<'a> {
     pub fn is_eof(&self) -> bool {
-        self.cur == None && (self.buf.len() == self.pos)
+        self.cur == None && (self.buf.len() == self.pos.get())
     }
 
     // may return Ok(None) if eof
