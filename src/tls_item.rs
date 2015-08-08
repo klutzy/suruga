@@ -28,12 +28,12 @@ macro_rules! tls_primitive {
     ($t:ident) => (
         impl TlsItem for $t {
             fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
-                stry_write_num!($t, writer, *self);
+                try_write_num!($t, writer, *self);
                 Ok(())
             }
 
             fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$t> {
-                let u = stry_read_num!($t, reader);
+                let u = try_read_num!($t, reader);
                 Ok(u)
             }
 
@@ -118,12 +118,12 @@ macro_rules! tls_enum {
 
         impl TlsItem for $name {
             fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
-                stry_write_num!($repr_ty, writer, *self);
+                try_write_num!($repr_ty, writer, *self);
                 Ok(())
             }
 
             fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
-                let num = stry_read_num!($repr_ty, reader) as u64;
+                let num = try_read_num!($repr_ty, reader) as u64;
                 let n: Option<$name> = ::num::traits::FromPrimitive::from_u64(num);
                 match n {
                     Some(n) => Ok(n),
@@ -174,7 +174,7 @@ macro_rules! tls_enum_struct {
                 match *self {
                     $(
                         $enum_name::$name(ref body) => {
-                            stry_write_num!($repr_ty, writer, tt_to_expr!($num));
+                            try_write_num!($repr_ty, writer, tt_to_expr!($num));
                             try!(body.tls_write(writer));
                         }
                     )+
@@ -183,7 +183,7 @@ macro_rules! tls_enum_struct {
             }
 
             fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$enum_name> {
-                let num = stry_read_num!($repr_ty, reader);
+                let num = try_read_num!($repr_ty, reader);
                 match num {
                     $(
                         tt_to_pat!($num) => {
@@ -301,15 +301,15 @@ macro_rules! tls_vec {
                 let size_max: u64 = $size_max;
 
                 if size_max < 1 << 8 {
-                    stry_write_num!(u8, writer, len);
+                    try_write_num!(u8, writer, len);
                 } else if size_max < 1 << 16 {
-                    stry_write_num!(u16, writer, len);
+                    try_write_num!(u16, writer, len);
                 } else if size_max < 1 << 24 {
-                    stry_write_num!(u24, writer, len);
+                    try_write_num!(u24, writer, len);
                 } else if size_max < 1 << 32 {
-                    stry_write_num!(u32, writer, len);
+                    try_write_num!(u32, writer, len);
                 } else {
-                    stry_write_num!(u64, writer, len);
+                    try_write_num!(u64, writer, len);
                 }
 
                 for item in (**self).iter() {
@@ -323,15 +323,15 @@ macro_rules! tls_vec {
                 let size_max: u64 = $size_max;
 
                 let self_size = if size_max < 1 << 8 {
-                    (stry_read_num!(u8, reader)) as u64
+                    (try_read_num!(u8, reader)) as u64
                 } else if size_max < 1 << 16 {
-                    (stry_read_num!(u16, reader)) as u64
+                    (try_read_num!(u16, reader)) as u64
                 } else if size_max < 1 << 24 {
-                    (stry_read_num!(u24, reader)) as u64
+                    (try_read_num!(u24, reader)) as u64
                 } else if size_max < 1 << 32 {
-                    (stry_read_num!(u32, reader)) as u64
+                    (try_read_num!(u32, reader)) as u64
                 } else {
-                    (stry_read_num!(u64, reader)) as u64
+                    (try_read_num!(u64, reader)) as u64
                 };
 
                 let mut items_size = 0u64;

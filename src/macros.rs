@@ -12,7 +12,7 @@ macro_rules! num_size {
     (u64) => (8);
 }
 
-macro_rules! stry_write_num {
+macro_rules! try_write_num {
     (u8, $writer:expr, $e:expr) => ({
         try!($writer.write_u8($e as u8));
     });
@@ -35,7 +35,7 @@ macro_rules! stry_write_num {
     });
 }
 
-macro_rules! stry_read_num {
+macro_rules! try_read_num {
     (u8, $reader:expr) => ({
         try!($reader.read_u8())
     });
