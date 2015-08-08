@@ -1,9 +1,7 @@
 #![crate_type = "lib"]
 #![crate_name = "suruga"]
 
-#![allow(missing_copy_implementations)]
-
-#![feature(core, collections)]
+#![feature(slice_bytes)]
 
 #[macro_use]
 extern crate log;

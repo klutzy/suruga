@@ -22,8 +22,8 @@ fn compute_mac(poly_key: &[u8], encrypted: &[u8], ad: &[u8]) -> [u8; MAC_LEN] {
     // follow draft-agl-tls-chacha20poly1305-04: data first, length later
     // note that in draft-agl-tls-chacha20poly1305-01 length is first
     fn push_all_with_len(vec: &mut Vec<u8>, data: &[u8]) {
-        vec.push_all(data);
-        vec.push_all(&u64_le_array(data.len() as u64));
+        vec.extend(data);
+        vec.extend(&u64_le_array(data.len() as u64));
     }
 
     push_all_with_len(&mut msg, ad);
@@ -52,7 +52,7 @@ impl Encryptor for ChaCha20Poly1305Encryptor {
 
         let mut encrypted = chacha20.encrypt(data);
         let mac = compute_mac(&poly1305_key, &encrypted, ad);
-        encrypted.push_all(&mac);
+        encrypted.extend(&mac);
 
         encrypted
     }

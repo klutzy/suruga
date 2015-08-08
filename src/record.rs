@@ -119,7 +119,7 @@ impl<W: Write> RecordWriter<W> {
                 let seq_num = u64_be_array(self.write_count);
 
                 let mut ad = Vec::new();
-                ad.push_all(&seq_num);
+                ad.extend(&seq_num);
                 ad.push(record.content_type as u8);
                 ad.push(record.ver_major);
                 ad.push(record.ver_minor);
@@ -256,7 +256,7 @@ impl<R: ReadExt> RecordReader<R> {
                 let seq_num = u64_be_array(self.read_count);
 
                 let mut ad = Vec::new();
-                ad.push_all(&seq_num);
+                ad.extend(&seq_num);
                 ad.push(enc_record.content_type as u8); // TLSCompressed.type
                 ad.push(enc_record.ver_major);
                 ad.push(enc_record.ver_minor);
@@ -338,7 +338,7 @@ impl<R: ReadExt> RecordReader<R> {
                     if record.fragment.len() == 0 {
                         return tls_err!(UnexpectedMessage, "zero-length Handshake arrived");
                     }
-                    self.handshake_buffer.add_record(record.fragment);
+                    self.handshake_buffer.add_record(&record.fragment);
 
                     match try!(self.handshake_buffer.get_message()) {
                         Some(handshake_msg) => return Ok(HandshakeMessage(handshake_msg)),
