@@ -30,6 +30,7 @@ macro_rules! tls_primitive {
 tls_primitive!(u8);
 tls_primitive!(u16);
 tls_primitive!(u32);
+tls_primitive!(u64);
 
 macro_rules! tls_struct {
     (
