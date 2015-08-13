@@ -422,3 +422,99 @@ impl<R: Read, W: Write> Tls<R, W> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::io::Cursor;
+    use cipher::Encryptor;
+    use super::*;
+
+    macro_rules! assert_record {
+        ($a:expr, $b:expr) => (
+            assert_eq!($a.content_type, $b.content_type);
+            assert_eq!($a.ver_major, $b.ver_major);
+            assert_eq!($a.ver_minor, $b.ver_minor);
+            assert_eq!($a.fragment, $b.fragment);
+        )
+    }
+
+    fn new_reader(data: &[u8]) -> RecordReader<Cursor<&[u8]>> {
+        RecordReader::new(Cursor::new(data))
+    }
+
+    macro_rules! assert_err {
+        ($e:expr, $kind:ident) => (
+            if let Err(e) = $e {
+                assert_eq!(e.kind, ::tls_result::TlsErrorKind::$kind);
+            } else {
+                panic!("expected `Err`, found `Ok(..)`");
+            }
+        )
+    }
+
+    #[test]
+    fn test_reader() {
+        let tests: &[(&[u8], Record)] = &[
+            // ChangeCipherSpec(1)
+            (&[0x14, 0x03, 0x03, 0x00, 0x01, 0x01],
+             Record::new(ContentType::ChangeCipherSpecTy, 3, 3, vec![1])),
+        ];
+        for &(input, ref output) in tests {
+            let mut rr = new_reader(input);
+            let record = rr.read_record().unwrap();
+            assert_record!(record, *output);
+            let eof = rr.read_record();
+            assert_err!(eof, IoFailure);
+        }
+    }
+
+    #[test]
+    fn test_reader_unknown() {
+        // Heartbeat request
+        let data = [0x18, 0x03, 0x03, 0x00, 0x03, 0x01, 0x00, 0x20];
+        let mut rr = new_reader(&data);
+        let record = rr.read_record();
+        assert_err!(record, UnexpectedMessage);
+    }
+
+    #[test]
+    fn test_reader_too_long() {
+        let len = RECORD_MAX_LEN + 1;
+        let mut data = vec![0x17, 0x03, 0x03, (len >> 8) as u8, len as u8];
+        for _ in 0..len {
+            data.push(0xFF);
+        }
+
+        let mut rr = new_reader(&data);
+        let record = rr.read_record();
+        assert_err!(record, RecordOverflow);
+    }
+
+    #[test]
+    fn test_reader_zero_length() {
+        for content_type in vec![20, 21, 22] {
+            let buf = [content_type, 0x03, 0x03, 0x00, 0x00];
+            let mut rr = new_reader(&buf);
+            let record = rr.read_message();
+            assert_err!(record, UnexpectedMessage);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_writer_too_long() {
+        // convert normal record into overlong encrypted record
+        struct Enc;
+        impl Encryptor for Enc {
+            fn encrypt(&mut self, _nonce: &[u8], _fragment: &[u8], _ad: &[u8]) -> Vec<u8> {
+                vec![0; ENC_RECORD_MAX_LEN + 1]
+            }
+        }
+
+        let record = Record::new(ContentType::ApplicationDataTy, 3, 3, vec![1]);
+
+        let mut rw = RecordWriter::new(Vec::new());
+        rw.set_encryptor(Box::new(Enc) as Box<Encryptor + Send>);
+        let _unreachable = rw.write_record(record);
+    }
+}
