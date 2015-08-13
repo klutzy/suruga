@@ -36,6 +36,7 @@ pub const RECORD_MAX_LEN: usize = 1 << 14;
 pub const ENC_RECORD_MAX_LEN: usize = (1 << 14) + 2048;
 
 /// corresponds to `TLSPlaintext` in Section 6.2.1.
+#[derive(Debug)]
 pub struct Record {
     pub content_type: ContentType,
     pub ver_major: u8,
@@ -45,38 +46,16 @@ pub struct Record {
 }
 
 impl Record {
-    pub fn new(content_type: ContentType, ver_major: u8, ver_minor: u8, fragment: Vec<u8>) -> Record {
+    pub fn new(content_type: ContentType,
+               ver_major: u8,
+               ver_minor: u8,
+               fragment: Vec<u8>) -> Record {
         let len = fragment.len();
         if len > RECORD_MAX_LEN {
             panic!("record too long: {} > 2^14", len);
         }
 
         Record {
-            content_type: content_type,
-            ver_major: ver_major,
-            ver_minor: ver_minor,
-            fragment: fragment,
-        }
-    }
-}
-
-/// corresponds to `TLSCiphertext` in Section 6.2.3.
-pub struct EncryptedRecord {
-    pub content_type: ContentType,
-    pub ver_major: u8,
-    pub ver_minor: u8,
-    // fragment length < 2^14 + 2048
-    pub fragment: Vec<u8>,
-}
-
-impl EncryptedRecord {
-    pub fn new(content_type: ContentType, ver_major: u8, ver_minor: u8, fragment: Vec<u8>) -> EncryptedRecord {
-        let len = fragment.len();
-        if len > ENC_RECORD_MAX_LEN {
-            panic!("record too long: {} > 2^14 + 2048", len);
-        }
-
-        EncryptedRecord {
             content_type: content_type,
             ver_major: ver_major,
             ver_minor: ver_minor,
@@ -112,11 +91,8 @@ impl<W: Write> RecordWriter<W> {
     }
 
     pub fn write_record(&mut self, record: Record) -> TlsResult<()> {
-        let enc_record = match self.encryptor {
-            None => EncryptedRecord::new(record.content_type,
-                                         record.ver_major,
-                                         record.ver_minor,
-                                         record.fragment),
+        let encrypted_fragment = match self.encryptor {
+            None => record.fragment,
             Some(ref mut encryptor) => {
                 let seq_num = u64_be_array(self.write_count);
 
@@ -132,22 +108,20 @@ impl<W: Write> RecordWriter<W> {
                 let encrypted_fragment = encryptor.encrypt(&seq_num,
                                                            &record.fragment,
                                                            &ad);
-                EncryptedRecord::new(record.content_type,
-                                     record.ver_major,
-                                     record.ver_minor,
-                                     encrypted_fragment)
+                encrypted_fragment
             }
         };
-        let fragment_len = enc_record.fragment.len() as u16;
 
-        try!(self.writer.write_u8(enc_record.content_type as u8));
+        let fragment_len = encrypted_fragment.len();
+        if fragment_len > ENC_RECORD_MAX_LEN {
+            panic!("record too long: {} > 2^14 + 2048", fragment_len);
+        }
 
-        let (major, minor) = TLS_VERSION;
-        try!(self.writer.write_u8(major));
-        try!(self.writer.write_u8(minor));
-
-        try!(self.writer.write_be_u16(fragment_len));
-        try!(self.writer.write_all(&enc_record.fragment));
+        try!(self.writer.write_u8(record.content_type as u8));
+        try!(self.writer.write_u8(record.ver_major));
+        try!(self.writer.write_u8(record.ver_minor));
+        try!(self.writer.write_be_u16(fragment_len as u16));
+        try!(self.writer.write_all(&encrypted_fragment));
 
         self.write_count += 1;
 
@@ -226,8 +200,8 @@ impl<R: ReadExt> RecordReader<R> {
     }
 
     fn read_record(&mut self) -> TlsResult<Record> {
-        let ty = try!(self.reader.read_u8());
-        let ty = {
+        let content_type = {
+            let ty = try!(self.reader.read_u8());
             let ct: Option<ContentType> = FromPrimitive::from_u8(ty);
             match ct {
                 Some(ty) => ty,
@@ -247,24 +221,27 @@ impl<R: ReadExt> RecordReader<R> {
         };
 
         let fragment = try!(self.reader.read_exact(len as usize));
-        let enc_record = EncryptedRecord::new(ty, major, minor, fragment);
 
         let record = match self.decryptor {
-            None => Record::new(enc_record.content_type,
-                                enc_record.ver_major,
-                                enc_record.ver_minor,
-                                enc_record.fragment),
+            None => {
+                if fragment.len() > RECORD_MAX_LEN {
+                    return tls_err!(RecordOverflow,
+                                    "decrypted record too long: {}",
+                                    fragment.len());
+                }
+                Record::new(content_type, major, minor, fragment)
+            }
             Some(ref mut decryptor) => {
                 let seq_num = u64_be_array(self.read_count);
 
                 let mut ad = Vec::new();
                 ad.extend(&seq_num);
-                ad.push(enc_record.content_type as u8); // TLSCompressed.type
-                ad.push(enc_record.ver_major);
-                ad.push(enc_record.ver_minor);
+                ad.push(content_type as u8); // TLSCompressed.type
+                ad.push(major);
+                ad.push(minor);
 
                 let mac_len = decryptor.mac_len();
-                let total_len = enc_record.fragment.len();
+                let total_len = fragment.len();
                 if total_len < mac_len {
                     return tls_err!(BadRecordMac, "encrypted message too short: {}", total_len);
                 }
@@ -273,14 +250,13 @@ impl<R: ReadExt> RecordReader<R> {
                 ad.push(frag_len as u8);
 
                 // TODO: "seq_num as nonce" is chacha20poly1305-specific
-                let data = try!(decryptor.decrypt(&seq_num,
-                                                  &enc_record.fragment,
-                                                  &ad));
+                let data = try!(decryptor.decrypt(&seq_num, &fragment, &ad));
+                if data.len() > RECORD_MAX_LEN {
+                    // decryption routine went wrong.
+                    return panic!("decrypted record too long: {}", data.len());
+                }
 
-                Record::new(enc_record.content_type,
-                            enc_record.ver_major,
-                            enc_record.ver_minor,
-                            data)
+                Record::new(content_type, major, minor, data)
             }
         };
 
