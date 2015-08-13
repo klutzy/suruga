@@ -64,6 +64,8 @@ impl Record {
     }
 }
 
+/// Writes `Record` or higher-layer message to a writable object.
+/// Record is internally encrypted before written.
 pub struct RecordWriter<W: Write> {
     writer: W,
     // if encryptor is None, handshake is not done yet.
@@ -72,6 +74,8 @@ pub struct RecordWriter<W: Write> {
 }
 
 impl<W: Write> RecordWriter<W> {
+    /// Create new `RecordWriter` with null encryption.
+    /// Invoke `set_encryptor` to set encryptor.
     pub fn new(writer: W) -> RecordWriter<W> {
         RecordWriter {
             writer: writer,
@@ -85,7 +89,10 @@ impl<W: Write> RecordWriter<W> {
         &mut self.writer
     }
 
+    /// Set encryptor and reset count.
+    /// This must be called only once.
     pub fn set_encryptor(&mut self, encryptor: Box<Encryptor + Send + 'static>) {
+        assert!(self.encryptor.is_none());
         self.encryptor = Some(encryptor);
         self.write_count = 0;
     }
@@ -164,6 +171,7 @@ impl<W: Write> RecordWriter<W> {
     }
 }
 
+/// Return type of `RecordReader.read_record()`.
 pub enum Message {
     HandshakeMessage(Handshake),
     ChangeCipherSpecMessage,
@@ -179,6 +187,8 @@ pub struct RecordReader<R: ReadExt> {
     handshake_buffer: HandshakeBuffer,
 }
 
+/// Reads `Record` or `Message` from a readable object.
+/// Record is internally decrypted after read.
 impl<R: ReadExt> RecordReader<R> {
     pub fn new(reader: R) -> RecordReader<R> {
         RecordReader {
@@ -194,11 +204,17 @@ impl<R: ReadExt> RecordReader<R> {
         &mut self.reader
     }
 
+    /// Set decryptor and reset count.
+    /// This must be called only once.
     pub fn set_decryptor(&mut self, decryptor: Box<Decryptor + Send + 'static>) {
+        assert!(self.decryptor.is_none());
         self.decryptor = Some(decryptor);
         self.read_count = 0;
     }
 
+    /// Read a record from readable stream.
+    ///
+    /// Any record with unknown content type is treated as an error.
     fn read_record(&mut self) -> TlsResult<Record> {
         let content_type = {
             let ty = try!(self.reader.read_u8());
@@ -265,10 +281,17 @@ impl<R: ReadExt> RecordReader<R> {
         Ok(record)
     }
 
-    /// read records until a "complete" message is found, and return the message.
+    /// Read records until a "complete" message is found, then return the message.
+    ///
     /// if invalid ChangeCipherSpec/Alert/Handshake message is found, return Err.
     /// (application record is always considered "complete" and "valid"
     /// since it is opaque to TLS layer.)
+    ///
+    /// Note: In theory, `Alert` message can be broken into several records.
+    /// It is not useful in practice and requires more complex routines.
+    /// (Incorrect handling leads to [Alert attack](http://www.mitls.org/wsgi/alert-attack).)
+    ///
+    /// We treat partial alert message as an error and returns `UnexpectedMessage`.
     pub fn read_message(&mut self) -> TlsResult<Message> {
         match try!(self.handshake_buffer.get_message()) {
             Some(handshake_msg) => return Ok(HandshakeMessage(handshake_msg)),
@@ -293,12 +316,7 @@ impl<R: ReadExt> RecordReader<R> {
                     if len == 0 {
                         return tls_err!(UnexpectedMessage, "zero-length Alert record arrived");
                     } else if len < 2 {
-                        // alert packet can be broken into several records,
-                        // buf it is rarely used and may cause alert attack
-                        // if carelessly implemented:
-                        // http://www.mitls.org/wsgi/alert-attack
-                        // we just don't accept such record for simplicity.
-                        // If alert messages are long, use the first two bytes.
+                        // alert attack
                         return tls_err!(UnexpectedMessage, "awkward Alert record arrived");
                     }
                     let level = FromPrimitive::from_u8(record.fragment[0]);
