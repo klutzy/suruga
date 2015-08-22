@@ -11,7 +11,6 @@ extern crate num;
 #[macro_use]
 extern crate enum_primitive;
 
-pub use tls::Tls;
 pub use client::TlsClient;
 
 #[macro_use]

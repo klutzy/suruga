@@ -1,10 +1,9 @@
 use std::io::prelude::*;
-use rand::OsRng;
 use num::traits::FromPrimitive;
 
-use tls_result::{TlsResult, TlsError, TlsErrorKind};
+use tls_result::TlsResult;
 use tls_result::TlsErrorKind::{UnexpectedMessage, RecordOverflow, BadRecordMac, AlertReceived};
-use alert::{self, Alert};
+use alert::Alert;
 use handshake::{Handshake, HandshakeBuffer};
 use util::u64_be_array;
 use util::{ReadExt, WriteExt};
@@ -66,18 +65,18 @@ impl Record {
 
 /// Writes `Record` or higher-layer message to a writable object.
 /// Record is internally encrypted before written.
-pub struct RecordWriter<W: Write> {
+pub struct TlsWriter<W: Write> {
     writer: W,
     // if encryptor is None, handshake is not done yet.
     encryptor: Option<Box<Encryptor + Send + 'static>>,
     write_count: u64,
 }
 
-impl<W: Write> RecordWriter<W> {
-    /// Create new `RecordWriter` with null encryption.
+impl<W: Write> TlsWriter<W> {
+    /// Create new `TlsWriter` with null encryption.
     /// Invoke `set_encryptor` to set encryptor.
-    pub fn new(writer: W) -> RecordWriter<W> {
-        RecordWriter {
+    pub fn new(writer: W) -> TlsWriter<W> {
+        TlsWriter {
             writer: writer,
             encryptor: None,
             write_count: 0,
@@ -171,7 +170,7 @@ impl<W: Write> RecordWriter<W> {
     }
 }
 
-/// Return type of `RecordReader.read_record()`.
+/// Return type of `TlsReader.read_record()`.
 pub enum Message {
     HandshakeMessage(Handshake),
     ChangeCipherSpecMessage,
@@ -179,7 +178,7 @@ pub enum Message {
     ApplicationDataMessage(Vec<u8>),
 }
 
-pub struct RecordReader<R: ReadExt> {
+pub struct TlsReader<R: ReadExt> {
     reader: R,
     // if decryptor is none, handshake is not done yet.
     decryptor: Option<Box<Decryptor + Send + 'static>>,
@@ -189,9 +188,9 @@ pub struct RecordReader<R: ReadExt> {
 
 /// Reads `Record` or `Message` from a readable object.
 /// Record is internally decrypted after read.
-impl<R: ReadExt> RecordReader<R> {
-    pub fn new(reader: R) -> RecordReader<R> {
-        RecordReader {
+impl<R: ReadExt> TlsReader<R> {
+    pub fn new(reader: R) -> TlsReader<R> {
+        TlsReader {
             reader: reader,
             decryptor: None,
             read_count: 0,
@@ -380,49 +379,6 @@ impl<R: ReadExt> RecordReader<R> {
     }
 }
 
-pub struct Tls<R: Read, W: Write> {
-    pub writer: RecordWriter<W>,
-    pub reader: RecordReader<R>,
-    pub rng: OsRng,
-}
-
-impl<R: Read, W: Write> Tls<R, W> {
-    pub fn new(reader: R, writer: W, rng: OsRng) -> Tls<R, W> {
-        let writer = RecordWriter::new(writer);
-        let reader = RecordReader::new(reader);
-        Tls {
-            writer: writer,
-            reader: reader,
-            rng: rng,
-        }
-    }
-
-    pub fn close(&mut self) -> TlsResult<()> {
-        let alert_data = alert::Alert {
-            level: alert::AlertLevel::fatal,
-            description: alert::AlertDescription::close_notify,
-        };
-        try!(self.writer.write_alert(&alert_data));
-        Ok(())
-    }
-
-    // send fatal alert and return error
-    // (it may be different to `err`, because writing alert can fail)
-    pub fn send_tls_alert(&mut self, err: TlsError) -> TlsError {
-        match err.kind {
-            TlsErrorKind::IoFailure => return err,
-            _ => {
-                let alert = alert::Alert::from_tls_err(&err);
-                let result = self.writer.write_alert(&alert);
-                match result {
-                    Ok(()) => return err,
-                    Err(err) => return err,
-                }
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use std::io::Cursor;
@@ -438,8 +394,8 @@ mod test {
         )
     }
 
-    fn new_reader(data: &[u8]) -> RecordReader<Cursor<&[u8]>> {
-        RecordReader::new(Cursor::new(data))
+    fn new_reader(data: &[u8]) -> TlsReader<Cursor<&[u8]>> {
+        TlsReader::new(Cursor::new(data))
     }
 
     macro_rules! assert_err {
@@ -513,7 +469,7 @@ mod test {
 
         let record = Record::new(ContentType::ApplicationDataTy, 3, 3, vec![1]);
 
-        let mut rw = RecordWriter::new(Vec::new());
+        let mut rw = TlsWriter::new(Vec::new());
         rw.set_encryptor(Box::new(Enc) as Box<Encryptor + Send>);
         let _unreachable = rw.write_record(record);
     }

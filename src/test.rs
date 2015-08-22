@@ -1,9 +1,8 @@
 use std::io::prelude::*;
 use std::io::Cursor;
 use std::iter::repeat;
-use rand::OsRng;
 
-use tls::Tls;
+use tls::{TlsReader, TlsWriter};
 use tls_result::TlsResult;
 use cipher::{Encryptor, Decryptor};
 use tls::Message::{ApplicationDataMessage, ChangeCipherSpecMessage};
@@ -27,15 +26,16 @@ impl Decryptor for NullDecryptor {
     fn mac_len(&self) -> usize { 0 }
 }
 
-fn null_tls<R: Read, W: Write>(reader: R, writer: W) -> Tls<R, W> {
-    let mut tls = Tls::new(reader, writer, OsRng::new().unwrap());
-
-    let null_encryptor = Box::new(NullEncryptor) as Box<Encryptor + Send>;
-    tls.writer.set_encryptor(null_encryptor);
+fn null_tls<R: Read, W: Write>(reader: R, writer: W) -> (TlsReader<R>, TlsWriter<W>) {
+    let mut reader = TlsReader::new(reader);
     let null_decryptor = Box::new(NullDecryptor) as Box<Decryptor + Send>;
-    tls.reader.set_decryptor(null_decryptor);
+    reader.set_decryptor(null_decryptor);
 
-    tls
+    let mut writer = TlsWriter::new(writer);
+    let null_encryptor = Box::new(NullEncryptor) as Box<Encryptor + Send>;
+    writer.set_encryptor(null_encryptor);
+
+    (reader, writer)
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn test_change_cipher_spec_message() {
     {
         let mut reader = Cursor::new(Vec::new());
         let mut tls = null_tls(&mut reader, &mut writer);
-        tls.writer.write_change_cipher_spec().unwrap();
+        tls.1.write_change_cipher_spec().unwrap();
     }
 
     let data = writer;
@@ -55,7 +55,7 @@ fn test_change_cipher_spec_message() {
     {
         let mut writer = Vec::new();
         let mut tls = null_tls(&mut reader, &mut writer);
-        let msg = tls.reader.read_message().unwrap();
+        let msg = tls.0.read_message().unwrap();
         match msg {
             ChangeCipherSpecMessage => {},
             _ => panic!(),
@@ -72,7 +72,7 @@ fn test_application_message() {
     {
         let mut reader = Cursor::new(Vec::new());
         let mut tls = null_tls(&mut reader, &mut writer);
-        tls.writer.write_application_data(&app_data).unwrap();
+        tls.1.write_application_data(&app_data).unwrap();
     }
 
     let data = writer;
@@ -81,7 +81,7 @@ fn test_application_message() {
     {
         let mut writer = Vec::new();
         let mut tls = null_tls(&mut reader, &mut writer);
-        let msg = tls.reader.read_message().unwrap();
+        let msg = tls.0.read_message().unwrap();
         match msg {
             ApplicationDataMessage(msg) => {
                 assert_eq!(msg, &[1u8; RECORD_MAX_LEN][..]);
@@ -89,7 +89,7 @@ fn test_application_message() {
             _ => panic!(),
         }
 
-        let msg = tls.reader.read_message().unwrap();
+        let msg = tls.0.read_message().unwrap();
         match msg {
             ApplicationDataMessage(msg) => {
                 assert_eq!(msg, &[1u8; 200][..]);
