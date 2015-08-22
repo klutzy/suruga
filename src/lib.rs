@@ -24,7 +24,6 @@ pub mod crypto;
 pub mod tls_result;
 #[macro_use]
 pub mod tls_item;
-pub mod record;
 
 // TLS AEAD cipehrsuites
 pub mod cipher;

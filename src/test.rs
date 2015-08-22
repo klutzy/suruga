@@ -6,8 +6,8 @@ use rand::OsRng;
 use tls::Tls;
 use tls_result::TlsResult;
 use cipher::{Encryptor, Decryptor};
-use record::Message::{ApplicationDataMessage, ChangeCipherSpecMessage};
-use record::RECORD_MAX_LEN;
+use tls::Message::{ApplicationDataMessage, ChangeCipherSpecMessage};
+use tls::RECORD_MAX_LEN;
 
 // ROT26 is a [Caesar cipher][1] with highly optimized diffusion table.
 // [1]: http://www.anagram.com/jcrap/Volume_3/caesar.pdf
