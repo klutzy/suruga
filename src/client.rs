@@ -5,7 +5,8 @@ use std::slice::bytes::copy_memory;
 use std::cmp;
 use rand::{Rng, OsRng};
 
-use tls_result::TlsResult;
+use alert;
+use tls_result::{TlsResult, TlsError, TlsErrorKind};
 use tls_result::TlsErrorKind::{UnexpectedMessage, InternalError, DecryptError, IllegalParameter};
 use util::{SurugaError, crypto_compare};
 use cipher::{self, Aead};
@@ -13,37 +14,41 @@ use cipher::prf::Prf;
 use crypto::sha2::sha256;
 use tls_item::{TlsItem, DummyItem};
 use handshake::{self, Handshake};
-use tls::{Tls, TLS_VERSION};
+use tls::{TlsReader, TlsWriter, TLS_VERSION};
 
 // handshake is done during construction.
 pub struct TlsClient<R: Read, W: Write> {
-    tls: Tls<R, W>,
+    pub reader: TlsReader<R>,
+    pub writer: TlsWriter<W>,
+    pub rng: OsRng,
     buf: Vec<u8>,
 }
 
 impl<R: Read, W: Write> TlsClient<R, W> {
     pub fn new(reader: R, writer: W, rng: OsRng) -> TlsResult<TlsClient<R, W>> {
         let mut client = TlsClient {
-            tls: Tls::new(reader, writer, rng),
+            reader: TlsReader::new(reader),
+            writer: TlsWriter::new(writer),
+            rng: rng,
             buf: Vec::new(),
         };
 
         // handshake failed. send alert if necessary
         match client.handshake() {
             Ok(()) => {}
-            Err(err) => return Err(client.tls.send_tls_alert(err)),
+            Err(err) => return Err(client.send_tls_alert(err)),
         }
         Ok(client)
     }
 
     #[inline]
     pub fn reader(&mut self) -> &mut R {
-        self.tls.reader.get_mut()
+        self.reader.get_mut()
     }
 
     #[inline]
     pub fn writer(&mut self) -> &mut W {
-        self.tls.writer.get_mut()
+        self.writer.get_mut()
     }
 
     // this does not send alert when error occurs
@@ -51,7 +56,7 @@ impl<R: Read, W: Write> TlsClient<R, W> {
         // expect specific HandshakeMessage. otherwise return Err
         macro_rules! expect {
             ($var:ident) => ({
-                match try!(self.tls.reader.read_handshake()) {
+                match try!(self.reader.read_handshake()) {
                     handshake::Handshake::$var(data) => data,
                     _ => return tls_err!(UnexpectedMessage, "unexpected handshake message found"),
                 }
@@ -60,7 +65,7 @@ impl<R: Read, W: Write> TlsClient<R, W> {
 
         let cli_random = {
             let mut random_bytes = [0u8; 32];
-            self.tls.rng.fill_bytes(&mut random_bytes);
+            self.rng.fill_bytes(&mut random_bytes);
             random_bytes.to_vec()
         };
         let random = try!(handshake::Random::new(cli_random.clone()));
@@ -77,7 +82,7 @@ impl<R: Read, W: Write> TlsClient<R, W> {
         let extensions = vec!(curve_list, format_list);
 
         let client_hello = try!(Handshake::new_client_hello(random, cipher_suite, extensions));
-        try!(self.tls.writer.write_handshake(&client_hello));
+        try!(self.writer.write_handshake(&client_hello));
 
         let server_hello_data = expect!(server_hello);
         {
@@ -113,14 +118,14 @@ impl<R: Read, W: Write> TlsClient<R, W> {
         let server_key_ex_data = expect!(server_key_exchange);
         let kex = cipher_suite.new_kex();
         let (key_data, pre_master_secret) = try!(kex.compute_keys(&server_key_ex_data,
-                                                                  &mut self.tls.rng));
+                                                                  &mut self.rng));
 
         expect!(server_hello_done);
 
         let client_key_exchange = try!(Handshake::new_client_key_exchange(key_data));
-        try!(self.tls.writer.write_handshake(&client_key_exchange));
+        try!(self.writer.write_handshake(&client_key_exchange));
 
-        try!(self.tls.writer.write_change_cipher_spec());
+        try!(self.writer.write_change_cipher_spec());
 
         // SECRET
         let master_secret = {
@@ -148,7 +153,7 @@ impl<R: Read, W: Write> TlsClient<R, W> {
 
             let write_key = prf.get_bytes(enc_key_length);
             let encryptor = aead.new_encryptor(write_key);
-            self.tls.writer.set_encryptor(encryptor);
+            self.writer.set_encryptor(encryptor);
 
             // this will be set after receiving ChangeCipherSpec.
             let read_key = prf.get_bytes(enc_key_length);
@@ -188,14 +193,14 @@ impl<R: Read, W: Write> TlsClient<R, W> {
             prf.get_bytes(cipher_suite.verify_data_len())
         };
         let finished = try!(Handshake::new_finished(client_verify_data));
-        try!(self.tls.writer.write_handshake(&finished));
+        try!(self.writer.write_handshake(&finished));
 
         // Although client->server is encrypted, server->client isn't yet.
         // server may send either ChangeCipherSpec or Alert.
-        try!(self.tls.reader.read_change_cipher_spec());
+        try!(self.reader.read_change_cipher_spec());
 
         // from now server starts encryption.
-        self.tls.reader.set_decryptor(aead.new_decryptor(read_key));
+        self.reader.set_decryptor(aead.new_decryptor(read_key));
 
         let server_finished = expect!(finished);
         {
@@ -230,7 +235,28 @@ impl<R: Read, W: Write> TlsClient<R, W> {
     }
 
     pub fn close(&mut self) -> TlsResult<()> {
-        self.tls.close()
+        let alert_data = alert::Alert {
+            level: alert::AlertLevel::fatal,
+            description: alert::AlertDescription::close_notify,
+        };
+        try!(self.writer.write_alert(&alert_data));
+        Ok(())
+    }
+
+    // send fatal alert and return error
+    // (it may be different to `err`, because writing alert can fail)
+    pub fn send_tls_alert(&mut self, err: TlsError) -> TlsError {
+        match err.kind {
+            TlsErrorKind::IoFailure => return err,
+            _ => {
+                let alert = alert::Alert::from_tls_err(&err);
+                let result = self.writer.write_alert(&alert);
+                match result {
+                    Ok(()) => return err,
+                    Err(err) => return err,
+                }
+            }
+        }
     }
 }
 
@@ -259,11 +285,11 @@ impl<R: Read, W: Write> Write for TlsClient<R, W> {
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        let result = self.tls.writer.write_application_data(buf);
+        let result = self.writer.write_application_data(buf);
         match result {
             Ok(()) => Ok(()),
             Err(err) => {
-                let err = self.tls.send_tls_alert(err);
+                let err = self.send_tls_alert(err);
                 // FIXME more verbose io error
                 Err(io::Error::new(io::ErrorKind::Other, SurugaError {
                     desc: "TLS write error",
@@ -282,7 +308,7 @@ impl<R: Read, W: Write> Read for TlsClient<R, W> {
         while pos < len {
             let remaining = len - pos;
             if self.buf.len() == 0 {
-                let data = match self.tls.reader.read_application_data() {
+                let data = match self.reader.read_application_data() {
                     Ok(data) => data,
                     Err(_err) => {
                         break; // FIXME: stop if EOF. otherwise raise error?
