@@ -1,24 +1,39 @@
+//! `TlsItem` represents item types that are serialized into TLS stream.
+//!
+//! There are several macros implementing common patterns:
+//!
+//! -   `tls_array` for fixed-length vector
+//! -   `tls_vec` for variable-length vector
+//! -   `tls_enum` for TLS enum type
+//! -   `tls_struct` for TLS constructed type
+//! -   `tls_option` for `Option<T>`
+
 use std::io::prelude::*;
 
 use util::{ReadExt, WriteExt};
 use tls_result::TlsResult;
 
+/// A trait for items that can be serialized at TLS stream.
 pub trait TlsItem {
+    /// Write an item into TLS stream.
     fn tls_write<W: WriteExt>(&self, writer: &mut W) -> TlsResult<()>;
+    /// Read an item from TLS stream.
     fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<Self>;
+    /// Returns the length of serialized bytes.
     fn tls_size(&self) -> u64;
 }
 
+// implementation of `TlsItem` for primitive integer types like `u8`
 macro_rules! tls_primitive {
     ($t:ident) => (
         impl TlsItem for $t {
             fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
-                stry_write_num!($t, writer, *self);
+                try_write_num!($t, writer, *self);
                 Ok(())
             }
 
             fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$t> {
-                let u = stry_read_num!($t, reader);
+                let u = try_read_num!($t, reader);
                 Ok(u)
             }
 
@@ -30,6 +45,7 @@ macro_rules! tls_primitive {
 tls_primitive!(u8);
 tls_primitive!(u16);
 tls_primitive!(u32);
+tls_primitive!(u64);
 
 macro_rules! tls_struct {
     (
@@ -102,12 +118,12 @@ macro_rules! tls_enum {
 
         impl TlsItem for $name {
             fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
-                stry_write_num!($repr_ty, writer, *self);
+                try_write_num!($repr_ty, writer, *self);
                 Ok(())
             }
 
             fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$name> {
-                let num = stry_read_num!($repr_ty, reader) as u64;
+                let num = try_read_num!($repr_ty, reader) as u64;
                 let n: Option<$name> = ::num::traits::FromPrimitive::from_u64(num);
                 match n {
                     Some(n) => Ok(n),
@@ -118,76 +134,6 @@ macro_rules! tls_enum {
 
             fn tls_size(&self) -> u64 {
                 num_size!($repr_ty)
-            }
-        }
-    )
-}
-
-// usage:
-// struct {
-//     Type type;
-//     "opaque" {
-//         select (type) {
-//             case TypeVariant1:
-//                 ...
-//             case TypeVariant2:
-//                 ...
-//         }
-//     }
-// } Struct;
-macro_rules! tls_enum_struct {
-    (
-        $repr_ty:ident,
-        $(#[$a:meta])*
-        enum $enum_name:ident {
-            $(
-                $name:ident($body_ty:ident) = $num:tt // $num: integer literal
-            ),+
-        }
-    ) => (
-        #[allow(non_camel_case_types)]
-        $(#[$a])*
-        pub enum $enum_name {
-            $(
-                $name($body_ty),
-            )+
-        }
-
-        impl TlsItem for $enum_name {
-            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> ::tls_result::TlsResult<()> {
-                match *self {
-                    $(
-                        $enum_name::$name(ref body) => {
-                            stry_write_num!($repr_ty, writer, tt_to_expr!($num));
-                            try!(body.tls_write(writer));
-                        }
-                    )+
-                }
-                Ok(())
-            }
-
-            fn tls_read<R: ReadExt>(reader: &mut R) -> ::tls_result::TlsResult<$enum_name> {
-                let num = stry_read_num!($repr_ty, reader);
-                match num {
-                    $(
-                        tt_to_pat!($num) => {
-                            let body: $body_ty = try!(TlsItem::tls_read(reader));
-                            Ok($enum_name::$name(body))
-                        }
-                    )+
-                    _ => return tls_err!(::tls_result::TlsErrorKind::DecodeError,
-                                         "unexpected value: {}", num),
-                }
-            }
-
-            fn tls_size(&self) -> u64 {
-                let prefix_size = num_size!($repr_ty);
-                let body_size = match *self {
-                    $(
-                        $enum_name::$name(ref body) => body.tls_size(),
-                    )+
-                };
-                prefix_size + body_size
             }
         }
     )
@@ -285,15 +231,15 @@ macro_rules! tls_vec {
                 let size_max: u64 = $size_max;
 
                 if size_max < 1 << 8 {
-                    stry_write_num!(u8, writer, len);
+                    try_write_num!(u8, writer, len);
                 } else if size_max < 1 << 16 {
-                    stry_write_num!(u16, writer, len);
+                    try_write_num!(u16, writer, len);
                 } else if size_max < 1 << 24 {
-                    stry_write_num!(u24, writer, len);
+                    try_write_num!(u24, writer, len);
                 } else if size_max < 1 << 32 {
-                    stry_write_num!(u32, writer, len);
+                    try_write_num!(u32, writer, len);
                 } else {
-                    stry_write_num!(u64, writer, len);
+                    try_write_num!(u64, writer, len);
                 }
 
                 for item in (**self).iter() {
@@ -307,15 +253,15 @@ macro_rules! tls_vec {
                 let size_max: u64 = $size_max;
 
                 let self_size = if size_max < 1 << 8 {
-                    (stry_read_num!(u8, reader)) as u64
+                    (try_read_num!(u8, reader)) as u64
                 } else if size_max < 1 << 16 {
-                    (stry_read_num!(u16, reader)) as u64
+                    (try_read_num!(u16, reader)) as u64
                 } else if size_max < 1 << 24 {
-                    (stry_read_num!(u24, reader)) as u64
+                    (try_read_num!(u24, reader)) as u64
                 } else if size_max < 1 << 32 {
-                    (stry_read_num!(u32, reader)) as u64
+                    (try_read_num!(u32, reader)) as u64
                 } else {
-                    (stry_read_num!(u64, reader)) as u64
+                    (try_read_num!(u64, reader)) as u64
                 };
 
                 let mut items_size = 0u64;
@@ -366,7 +312,7 @@ macro_rules! tls_vec {
     )
 }
 
-// this only works when the item is at the last
+// this only works when the item is at the last of stream
 macro_rules! tls_option {
     ($t:ty) => (
         impl TlsItem for Option<$t> {
@@ -411,7 +357,8 @@ impl TlsItem for DummyItem {
     fn tls_size(&self) -> u64 { 0 }
 }
 
-// it is assumed that the data is at the end of stream. (calls `Read.read_to_end()`)
+// obsucre data received from TLS stream.
+// since the semantic is unknown, it is only meaningful to read until end of stream is reached.
 pub struct ObscureData(Vec<u8>);
 
 impl TlsItem for ObscureData {

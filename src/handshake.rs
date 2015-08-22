@@ -3,7 +3,7 @@ use std::io::prelude::*;
 use util::{ReadExt, WriteExt};
 use tls::TLS_VERSION;
 use tls_result::TlsResult;
-use tls_result::TlsErrorKind::{InternalError, UnexpectedMessage};
+use tls_result::TlsErrorKind::{InternalError, UnexpectedMessage, DecodeError};
 use tls_item::{TlsItem, DummyItem, ObscureData};
 use signature::SignatureAndHashAlgorithmVec;
 use cipher::CipherSuite;
@@ -49,18 +49,93 @@ tls_enum!(u8, enum ECPointFormat {
 });
 tls_vec!(ECPointFormatList = ECPointFormat(1, (1 << 8) - 1));
 
-// FIXME: Extension has the following structure:
+// Hello extension (RFC 5246, 7.4.1.4.) is defined as like:
+// tls_vec!(ExtensionData = opaque(1, (1 << 16) - 1));
+// tls_struct!(struct Extension {
+//     extension_type: u16,
+//     extension_data: ExtensionData,
+// });
+//
+// after unrolling `ExtensionData`:
 // struct Extension {
-//     extension_type: u8,
-//     extension_data: opaque<1..2^16-1>,
+//     extension_type: u16,
+//     extension_data_size: u16,
+//     // type determined by extension_type
+//     // size determined by extension_data_size
+//     extension_data: T,
 // }
-// and actual structure of `extension_data` depends on `extension_type`.
-// Note that this is not exactly what `tls_enum_struct` wants!
-// It's why we define horrible structs here.
-tls_vec!(EllipticCurveListList = EllipticCurveList(1, (1 << 16) - 1));
-tls_vec!(ECPointFormatListList = ECPointFormatList(1, (1 << 16) - 1));
+macro_rules! tls_hello_extension {
+    (
+        enum $enum_name:ident {
+            $(
+                $ext_name:ident($body_ty:ident) = $ext_num:tt
+            ),+
+        }
+    ) => (
+        #[allow(non_camel_case_types)]
+        pub enum $enum_name {
+            $(
+                $ext_name($body_ty),
+            )+
+            // extension_type, extension_data
+            Unknown(u16, Vec<u8>),
+        }
 
-tls_enum_struct!(u16, enum Extension {
+        impl TlsItem for $enum_name {
+            fn tls_write<W: WriteExt>(&self, writer: &mut W) -> TlsResult<()> {
+                match *self {
+                    $(
+                        $enum_name::$ext_name(ref body) => {
+                            try_write_num!(u16, writer, tt_to_expr!($ext_num));
+                            try_write_num!(u16, writer, body.tls_size() as u16);
+                            try!(body.tls_write(writer));
+                        }
+                    )+
+                    $enum_name::Unknown(extension_type, ref extension_data) => {
+                        try_write_num!(u16, writer, extension_type);
+                        try_write_num!(u16, writer, extension_data.len() as u16);
+                        try!(writer.write(extension_data));
+                    }
+                }
+                Ok(())
+            }
+
+            fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<$enum_name> {
+                let extension_type = try_read_num!(u16, reader);
+                let extension_data_size = try_read_num!(u16, reader);
+                match extension_type {
+                    $(
+                        tt_to_pat!($ext_num) => {
+                            let body: $body_ty = try!(TlsItem::tls_read(reader));
+                            let body_size = body.tls_size();
+                            if extension_data_size as u64 != body_size {
+                                return tls_err!(DecodeError, "Hello Extension has wrong size");
+                            }
+                            Ok($enum_name::$ext_name(body))
+                        }
+                    )+
+                    _ => {
+                        let body: Vec<u8> = try!(reader.read_exact(extension_data_size as usize));
+                        Ok($enum_name::Unknown(extension_type, body))
+                    }
+                }
+            }
+
+            fn tls_size(&self) -> u64 {
+                let body_size = match *self {
+                    $(
+                        $enum_name::$ext_name(ref body) => body.tls_size(),
+                    )+
+                    $enum_name::Unknown(_, ref body) => body.len() as u64,
+                };
+                // extension_type, extension_data_size
+                4 + body_size
+            }
+        }
+    )
+}
+
+tls_hello_extension!(enum Extension {
     // RFC 6066
     //server_name(0),
     //max_fragment_length(1),
@@ -69,22 +144,21 @@ tls_enum_struct!(u16, enum Extension {
     //truncated_hmac(4),
     //status_request(5),
     // RFC 4492
-    elliptic_curves(EllipticCurveListList) = 10,
-    ec_point_formats(ECPointFormatListList) = 11
+    elliptic_curves(EllipticCurveList) = 10,
+    ec_point_formats(ECPointFormatList) = 11
     // RFC 5246
     //signature_algorithms(13)
 });
+
 impl Extension {
     pub fn new_elliptic_curve_list(list: Vec<NamedCurve>) -> TlsResult<Extension> {
         let list = try!(EllipticCurveList::new(list));
-        let list = try!(EllipticCurveListList::new(vec!(list)));
         let list = Extension::elliptic_curves(list);
         Ok(list)
     }
 
     pub fn new_ec_point_formats(list: Vec<ECPointFormat>) -> TlsResult<Extension> {
         let list = try!(ECPointFormatList::new(list));
-        let list = try!(ECPointFormatListList::new(vec!(list)));
         let list = Extension::ec_point_formats(list);
         Ok(list)
     }
