@@ -115,7 +115,7 @@ macro_rules! tls_hello_extension {
                         }
                     )+
                     _ => {
-                        let body: Vec<u8> = try!(reader.read_exact(extension_data_size as usize));
+                        let body: Vec<u8> = try!(ReadExt::read_exact(reader, extension_data_size as usize));
                         Ok($enum_name::Unknown(extension_type, body))
                     }
                 }
