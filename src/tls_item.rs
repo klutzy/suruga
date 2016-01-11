@@ -18,7 +18,7 @@ pub trait TlsItem {
     /// Write an item into TLS stream.
     fn tls_write<W: WriteExt>(&self, writer: &mut W) -> TlsResult<()>;
     /// Read an item from TLS stream.
-    fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<Self>;
+    fn tls_read<R: ReadExt>(reader: &mut R) -> TlsResult<Self> where Self: Sized;
     /// Returns the length of serialized bytes.
     fn tls_size(&self) -> u64;
 }
