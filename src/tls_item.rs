@@ -164,7 +164,7 @@ macro_rules! tls_array {
             }
 
             fn tls_read<R: ReadExt>(reader: &mut R) -> $crate::tls_result::TlsResult<$name> {
-                let data = try!(reader.read_exact($n));
+                let data = try!(ReadExt::read_exact(reader, $n));
                 Ok($name(data))
             }
 

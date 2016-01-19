@@ -235,7 +235,7 @@ impl<R: ReadExt> TlsReader<R> {
             len
         };
 
-        let fragment = try!(self.reader.read_exact(len as usize));
+        let fragment = try!(ReadExt::read_exact(&mut self.reader, len as usize));
 
         let record = match self.decryptor {
             None => {
